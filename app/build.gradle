@@ -1,5 +1,7 @@
 apply plugin: 'com.android.application'
 apply plugin: 'org.greenrobot.greendao'
+
+apply plugin: 'com.google.gms.google-services'
 apply plugin: 'io.fabric'
 
 static def increasedVersionCode() {
@@ -15,7 +17,7 @@ def keystorePSW = ''
 def keystoreAlias = ''
 def keystoreAliasPSW = ''
 // default keystore file, PLZ config file path in local.properties
-def keyFile = file('s.keystore.temp')
+def keyFile = file('keystore.jks')
 
 Properties properties = new Properties()
 // local.properties file in the root director
@@ -31,7 +33,6 @@ if (keystoreFilepath) {
 
 android {
     compileSdkVersion 27
-    buildToolsVersion '28.0.2'
     signingConfigs {
         myConfig {
             storeFile keyFile
@@ -42,14 +43,13 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.gedoor.monkeybook"
+        applicationId "com.hx.monkeybook"
         minSdkVersion 19
         targetSdkVersion 27
         versionCode 10000 + gitCommits
         versionName version
         project.ext.set("archivesBaseName", name + "_" + version)
         multiDexEnabled true
-
     }
 
     lintOptions {
@@ -63,8 +63,8 @@ android {
         }
         debug {
             signingConfig signingConfigs.myConfig
-            applicationIdSuffix '.debug'
-            versionNameSuffix ' debug'
+//            applicationIdSuffix '.debug'
+//            versionNameSuffix ' debug'
             buildConfigField "boolean", "IS_RELEASE", "false"
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
@@ -169,5 +169,3 @@ greendao {
     daoPackage 'com.monke.monkeybook.dao'
     targetGenDir 'src/main/java'
 }
-
-apply plugin: 'com.google.gms.google-services'
