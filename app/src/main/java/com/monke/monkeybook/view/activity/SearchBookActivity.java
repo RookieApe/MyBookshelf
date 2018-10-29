@@ -18,6 +18,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
@@ -218,8 +219,18 @@ public class SearchBookActivity extends MBaseActivity<SearchBookContract.Present
         searchView.setQueryHint(getString(R.string.search_book_key));
         //获取到TextView的控件
         mSearchAutoComplete.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
-
+        mSearchAutoComplete.setPadding(15, 0, 0, 0);
         searchView.onActionViewExpanded();
+        LinearLayout editFrame = searchView.findViewById(android.support.v7.appcompat.R.id.search_edit_frame);
+        ImageView closeButton = searchView.findViewById(android.support.v7.appcompat.R.id.search_close_btn);
+        ImageView goButton = searchView.findViewById(android.support.v7.appcompat.R.id.search_go_btn);
+        LinearLayout.LayoutParams params = (LinearLayout.LayoutParams) editFrame.getLayoutParams();
+        params.setMargins(20, 0, 10, 0);
+        editFrame.setLayoutParams(params);
+        closeButton.setScaleX(0.9f);
+        closeButton.setScaleY(0.9f);
+        closeButton.setPadding(0,0,0,0);
+        goButton.setPadding(0,0,0,0);
         searchView.setSubmitButtonEnabled(true);
         searchView.setOnQueryTextListener(new SearchView.OnQueryTextListener() {
             @Override
@@ -330,12 +341,24 @@ public class SearchBookActivity extends MBaseActivity<SearchBookContract.Present
         code = code.toLowerCase().replaceAll("^set:", "").trim();
         String[] param = code.split("\\s+");
         String msg = null;
+        boolean enable = param.length == 1 || !param[1].equals("false");
         switch (param[0]) {
             case "show_nav_shelves":
-                boolean enable = param.length == 1 || !param[1].equals("false");
                 SharedPreferencesUtil.saveData("showNavShelves", enable);
                 msg = "已" + (enable ? "启" : "禁") + "用侧边栏书架！";
                 RxBus.get().post(RxBusTag.UPDATE_PX, true);
+                break;
+            case "fade_tts":
+                SharedPreferencesUtil.saveData("fadeTTS", enable);
+                msg = "已" + (enable ? "启" : "禁") + "用朗读时淡入淡出！";
+                break;
+            case "use_regex_in_new_rule":
+                SharedPreferencesUtil.saveData("useRegexInNewRule", enable);
+                msg = "已" + (enable ? "启" : "禁") + "用新建替换规则时默认使用正则表达式！";
+                break;
+            case "blur_sim_back":
+                SharedPreferencesUtil.saveData("blurSimBack", enable);
+                msg = "已" + (enable ? "启" : "禁") + "用仿真翻页背景虚化！";
                 break;
         }
         if (msg != null)

@@ -21,6 +21,13 @@
             android:icon="@drawable/ic_download_line"
             android:title="@string/download_offline"
             app:showAsAction="ifRoom" />
+        
+        <item
+            android:id="@+id/disable_book_source"
+            android:icon="@drawable/ic_cancel"
+            android:title="@string/disable_book_source"
+            app:showAsAction="never" />
+
     </group>
 
     <group android:id="@+id/menuShow">
@@ -37,17 +44,10 @@
             app:showAsAction="ifRoom" />
 
         <item
-            android:id="@+id/disable_book_source"
-            android:icon="@drawable/ic_cancel"
-            android:title="@string/disable_book_source"
-            app:showAsAction="ifRoom" />
-
+            android:id="@+id/action_book_info"
+            android:icon="@drawable/ic_toc"
+            android:title="@string/book_info"
+            app:showAsAction="never" />
     </group>
-
-    <item
-        android:id="@+id/action_book_info"
-        android:icon="@drawable/ic_toc"
-        android:title="@string/book_info"
-        app:showAsAction="never" />
 
 </menu>

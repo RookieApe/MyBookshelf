@@ -20,7 +20,6 @@ import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.widget.CardView;
 import android.support.v7.widget.Toolbar;
-import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -35,17 +34,14 @@ import android.widget.Switch;
 import android.widget.TextView;
 
 import com.hwangjr.rxbus.RxBus;
-import com.monke.monkeybook.BuildConfig;
 import com.monke.monkeybook.MApplication;
 import com.monke.monkeybook.R;
 import com.monke.monkeybook.base.BaseTabActivity;
-import com.monke.monkeybook.help.ACache;
 import com.monke.monkeybook.help.BookshelfHelp;
 import com.monke.monkeybook.help.DataBackup;
 import com.monke.monkeybook.help.LauncherIcon;
 import com.monke.monkeybook.help.RxBusTag;
-import com.monke.monkeybook.help.UpdateManager;
-import com.monke.monkeybook.model.BookSourceManage;
+import com.monke.monkeybook.model.BookSourceManager;
 import com.monke.monkeybook.presenter.MainPresenterImpl;
 import com.monke.monkeybook.presenter.contract.MainContract;
 import com.monke.monkeybook.view.fragment.BookListFragment;
@@ -172,7 +168,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
     }
 
     //初始化TabLayout和ViewPager
-    private void initTabLayout(){
+    private void initTabLayout() {
 
         //TabLayout使用自定义Item
         for (int i = 0; i < mTlIndicator.getTabCount(); i++) {
@@ -183,9 +179,9 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
                     View tabView = (View) tab.getCustomView().getParent();
                     tabView.setTag(i);
                     //设置第一个Item的点击事件(当下标为0时触发)
-                    if (i==0){
+                    if (i == 0) {
                         tabView.setOnClickListener(view -> {
-                            if (tabView.isSelected()){
+                            if (tabView.isSelected()) {
                                 //切换书架
                                 PopupMenu popupMenu = new PopupMenu(this, view);
                                 for (int j = 0; j < BOOK_GROUPS.length; j++) {
@@ -204,11 +200,10 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
         }
     }
 
-    private void updateTabItemText(int group){
+    private void updateTabItemText(int group) {
         TabLayout.Tab tab = mTlIndicator.getTabAt(0);
         //首先移除原先View
-        assert tab != null;
-        final ViewParent customParent= tab.getCustomView().getParent();
+        final ViewParent customParent = tab.getCustomView().getParent();
         if (customParent != null) {
             ((ViewGroup) customParent).removeView(tab.getCustomView());
         }
@@ -462,7 +457,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
             editor.putInt("versionCode", MApplication.getVersionCode());
             editor.apply();
             //书源为空时加载默认书源
-            BookSourceManage.initDefaultBookSource(this);
+            BookSourceManager.initDefaultBookSource(this);
             //更新日志
             moProgressHUD.showAssetMarkdown("updateLog.md");
         }
@@ -480,9 +475,6 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
         if (!isRecreate) {
             versionUpRun();
             requestPermission();
-            if (!BuildConfig.DEBUG && TextUtils.isEmpty(ACache.get(this).getAsString("checkUpdate"))) {
-                UpdateManager.getInstance(this).checkUpdate(false);
-            }
         }
     }
 
@@ -518,7 +510,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
         Boolean mo = moProgressHUD.onKeyDown(keyCode, event);
         if (mo) {
             return true;
-        } else if (mTlIndicator.getSelectedTabPosition() != 0){
+        } else if (mTlIndicator.getSelectedTabPosition() != 0) {
             Objects.requireNonNull(mTlIndicator.getTabAt(0)).select();
             return true;
         } else {
@@ -544,6 +536,13 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
             DataBackup.getInstance().autoSave();
             finish();
         }
+    }
+
+    @Override
+    public void onDestroy() {
+        if (preferences.getBoolean("fadeTTS", false))
+            mPresenter.resetVolume();
+        super.onDestroy();
     }
 
     @Override

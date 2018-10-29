@@ -1,70 +1,57 @@
 package com.monke.monkeybook.widget.page;
 
+import java.util.List;
+
 /**
- * Created by newbiechen on 17-7-1.
+ * 章节
  */
 
-public class TxtChapter {
+class TxtChapter {
+    private int position;
+    private List<TxtPage> txtPageList;
+    private Enum.PageStatus status = Enum.PageStatus.LOADING;
+    private String msg;
 
-    //章节所属的小说(网络)
-    String bookId;
-    //章节的链接(网络)
-    String link;
-
-    //章节名(共用)
-    String title;
-
-    //章节内容在文章中的起始位置(本地)
-    long start;
-    //章节内容在文章中的终止位置(本地)
-    long end;
-
-    public String getBookId() {
-        return bookId;
+    TxtChapter(int position) {
+        this.position = position;
     }
 
-    public void setBookId(String id) {
-        this.bookId = id;
+    public int getPosition() {
+        return position;
     }
 
-    public String getLink() {
-        return link;
+    void setTxtPageList(List<TxtPage> txtPageList) {
+        this.txtPageList = txtPageList;
     }
 
-    public void setLink(String link) {
-        this.link = link;
+    List<TxtPage> getTxtPageList() {
+        return txtPageList;
     }
 
-    public String getTitle() {
-        return title;
+    int getPageSize() {
+        return txtPageList != null ? txtPageList.size() : 0;
     }
 
-    public void setTitle(String title) {
-        this.title = title;
+    TxtPage getPage(int page) {
+        if (txtPageList != null) {
+            return txtPageList.get(Math.max(0, Math.min(page, txtPageList.size() - 1)));
+        }
+        return null;
     }
 
-    public long getStart() {
-        return start;
+    Enum.PageStatus getStatus() {
+        return status;
     }
 
-    public void setStart(long start) {
-        this.start = start;
+    void setStatus(Enum.PageStatus mStatus) {
+        this.status = mStatus;
     }
 
-    public long getEnd() {
-        return end;
+    public String getMsg() {
+        return msg;
     }
 
-    public void setEnd(long end) {
-        this.end = end;
-    }
-
-    @Override
-    public String toString() {
-        return "TxtChapter{" +
-                "title='" + title + '\'' +
-                ", start=" + start +
-                ", end=" + end +
-                '}';
+    public void setMsg(String msg) {
+        this.msg = msg;
     }
 }

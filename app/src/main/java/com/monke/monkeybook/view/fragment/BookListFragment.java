@@ -10,7 +10,11 @@ import android.support.v7.widget.GridLayoutManager;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.helper.ItemTouchHelper;
+import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.RelativeLayout;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.monke.monkeybook.BitIntentDataManager;
@@ -24,17 +28,16 @@ import com.monke.monkeybook.presenter.BookListPresenterImpl;
 import com.monke.monkeybook.presenter.ReadBookPresenterImpl;
 import com.monke.monkeybook.presenter.contract.BookListContract;
 import com.monke.monkeybook.view.activity.BookDetailActivity;
-import com.monke.monkeybook.view.activity.MainActivity;
 import com.monke.monkeybook.view.activity.ReadBookActivity;
 import com.monke.monkeybook.view.adapter.BookShelfGridAdapter;
 import com.monke.monkeybook.view.adapter.BookShelfListAdapter;
 import com.monke.monkeybook.view.adapter.base.OnItemClickListenerTwo;
 
 import java.util.List;
-import java.util.Objects;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import butterknife.Unbinder;
 
 import static com.monke.monkeybook.utils.NetworkUtil.isNetWorkAvailable;
 
@@ -44,7 +47,12 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
     SwipeRefreshLayout refreshLayout;
     @BindView(R.id.local_book_rv_content)
     RecyclerView rvBookshelf;
+    @BindView(R.id.tv_empty)
+    TextView tvEmpty;
+    @BindView(R.id.rl_empty_view)
+    RelativeLayout rlEmptyView;
 
+    private Unbinder unbinder;
     private boolean viewIsList;
     private String bookPx;
     private boolean resumed = false;
@@ -67,6 +75,13 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
     @Override
     public int createLayoutId() {
         return R.layout.fragment_book_list;
+    }
+
+    @Override
+    public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState) {
+        View rootView = super.onCreateView(inflater, container, savedInstanceState);
+        unbinder = ButterKnife.bind(this, rootView);
+        return rootView;
     }
 
     @Override
@@ -97,18 +112,13 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
 
     @Override
     protected void firstRequest() {
-        group = callBackValue != null ? callBackValue.getGroup() : 0;
-        if (preferences.getBoolean(getString(R.string.pk_auto_refresh), false) & !isRecreate) {
-            if (isNetWorkAvailable()) {
-                mPresenter.queryBookShelf(true, group);
-            } else {
-                mPresenter.queryBookShelf(false, group);
-                Toast.makeText(getContext(), "无网络，自动刷新失败！", Toast.LENGTH_SHORT).show();
-            }
+        group = preferences.getInt("bookshelfGroup", 0);
+        if (preferences.getBoolean(getString(R.string.pk_auto_refresh), false)
+                && !isRecreate && isNetWorkAvailable() && group != 2) {
+            mPresenter.queryBookShelf(true, group);
         } else {
             mPresenter.queryBookShelf(false, group);
         }
-
     }
 
     @Override
@@ -213,7 +223,6 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
         super.onPause();
     }
 
-
     private void stopBookShelfRefreshAnim() {
         List<BookShelfBean> bookShelfBeans = getBookshelfList();
         if (bookShelfBeans != null && bookShelfBeans.size() > 0) {
@@ -232,6 +241,12 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
             bookShelfListAdapter.replaceAll(bookShelfBeanList, bookPx);
         } else {
             bookShelfGridAdapter.replaceAll(bookShelfBeanList, bookPx);
+        }
+        if (bookShelfBeanList.size() > 0) {
+            rlEmptyView.setVisibility(View.GONE);
+        } else {
+            tvEmpty.setText("书架空空，去搜索添加书籍吧！");
+            rlEmptyView.setVisibility(View.VISIBLE);
         }
     }
 
@@ -262,6 +277,12 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
     @Override
     public SharedPreferences getPreferences() {
         return preferences;
+    }
+
+    @Override
+    public void onDestroyView() {
+        super.onDestroyView();
+        unbinder.unbind();
     }
 
     public interface CallBackValue {
