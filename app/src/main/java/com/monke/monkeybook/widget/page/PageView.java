@@ -2,10 +2,10 @@ package com.monke.monkeybook.widget.page;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.RectF;
-import android.support.design.widget.Snackbar;
 import android.util.AttributeSet;
 import android.view.MotionEvent;
 import android.view.View;
@@ -13,6 +13,7 @@ import android.view.ViewConfiguration;
 
 import com.monke.monkeybook.bean.BookShelfBean;
 import com.monke.monkeybook.help.ReadBookControl;
+import com.monke.monkeybook.utils.ScreenUtils;
 import com.monke.monkeybook.utils.barUtil.ImmersionBar;
 import com.monke.monkeybook.view.activity.ReadBookActivity;
 import com.monke.monkeybook.widget.animation.CoverPageAnim;
@@ -42,6 +43,7 @@ public class PageView extends View {
     private int mStartX = 0;
     private int mStartY = 0;
     private boolean isMove = false;
+    private boolean actionFromEdge = false;
     private int mPageIndex;
     private int mChapterIndex;
     // 初始化参数
@@ -53,6 +55,10 @@ public class PageView extends View {
     private boolean isPrepare;
     // 动画类
     private PageAnimation mPageAnim;
+    //点击监听
+    private TouchListener mTouchListener;
+    //内容加载器
+    private PageLoader mPageLoader;
     // 动画监听类
     private PageAnimation.OnPageChangeListener mPageAnimListener = new PageAnimation.OnPageChangeListener() {
         @Override
@@ -69,12 +75,12 @@ public class PageView extends View {
         public void pageCancel() {
             PageView.this.pageCancel();
         }
-    };
 
-    //点击监听
-    private TouchListener mTouchListener;
-    //内容加载器
-    private PageLoader mPageLoader;
+        @Override
+        public void nextPage() {
+            autoNextPage();
+        }
+    };
 
     public PageView(Context context) {
         this(context, null);
@@ -227,10 +233,20 @@ public class PageView extends View {
             return true;
         }
 
+        if (actionFromEdge) {
+            if (event.getAction() == MotionEvent.ACTION_UP)
+                actionFromEdge = false;
+            return true;
+        }
+
         int x = (int) event.getX();
         int y = (int) event.getY();
         switch (event.getAction()) {
             case MotionEvent.ACTION_DOWN:
+                if (event.getEdgeFlags() != 0 || event.getRawY() < ScreenUtils.dpToPx(20) || event.getRawY() > Resources.getSystem().getDisplayMetrics().heightPixels - ScreenUtils.dpToPx(20)) {
+                    actionFromEdge = true;
+                    return true;
+                }
                 mStartX = x;
                 mStartY = y;
                 isMove = false;
@@ -282,7 +298,7 @@ public class PageView extends View {
         if (mPageLoader.prev()) {
             return true;
         } else {
-            Snackbar.make(this, "没有上一页", Snackbar.LENGTH_SHORT).show();
+            activity.showSnackBar(this,"没有上一页");
             return false;
         }
     }
@@ -294,7 +310,7 @@ public class PageView extends View {
         if (mPageLoader.next()) {
             return true;
         } else {
-            Snackbar.make(this, "没有下一页", Snackbar.LENGTH_SHORT).show();
+            activity.showSnackBar(this, "没有下一页");
             return false;
         }
     }

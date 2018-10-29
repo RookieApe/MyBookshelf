@@ -1,6 +1,5 @@
 package com.monke.monkeybook.help;
 
-import android.content.Context;
 import android.content.SharedPreferences;
 import android.support.v4.provider.DocumentFile;
 import android.widget.Toast;
@@ -18,13 +17,18 @@ import com.monke.monkeybook.dao.DbHelper;
 import com.monke.monkeybook.model.BookSourceManage;
 import com.monke.monkeybook.model.ReplaceRuleManage;
 import com.monke.monkeybook.utils.FileUtil;
+import com.monke.monkeybook.utils.SharedPreferencesUtil;
+import com.monke.monkeybook.utils.XmlUtils;
 
+import java.io.FileOutputStream;
 import java.util.List;
 
 import io.reactivex.Observable;
 import io.reactivex.ObservableOnSubscribe;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.schedulers.Schedulers;
+import pub.devrel.easypermissions.EasyPermissions;
+
 
 /**
  * Created by GKF on 2018/1/30.
@@ -35,6 +39,26 @@ public class DataBackup {
 
     public static DataBackup getInstance() {
         return new DataBackup();
+    }
+
+
+    public void autoSave() {
+        long currentTime = System.currentTimeMillis();
+        if (EasyPermissions.hasPermissions(MApplication.getInstance(), MApplication.PerList)) {
+            long lastBackupTime = (long) SharedPreferencesUtil.getData(MApplication.getInstance(), "backupTime", 0L);
+            if (currentTime - lastBackupTime > 24 * 3600 * 1000) {
+                DocumentHelper.createDirIfNotExist(FileUtil.getSdCardPath(), "YueDu");
+                String dirPath = FileUtil.getSdCardPath() + "/YueDu";
+                DocumentHelper.createDirIfNotExist(dirPath, "autoSave");
+                dirPath += "/autoSave";
+                backupBookShelf(dirPath);
+                backupBookSource(dirPath);
+                backupSearchHistory(dirPath);
+                backupReplaceRule(dirPath);
+                backupConfig(dirPath);
+                SharedPreferencesUtil.saveData("backupTime", currentTime);
+            }
+        }
     }
 
     public void run() {
@@ -127,13 +151,20 @@ public class DataBackup {
     }
 
     private void backupConfig(String file) {
+        SharedPreferences pref = MApplication.getInstance().getConfigPreferences();
+        /*
         DocumentFile docFile = DocumentHelper.createFileIfNotExist("config.json", file);
-        SharedPreferences pref = MApplication.getInstance().getSharedPreferences("CONFIG", Context.MODE_PRIVATE);
         Gson gson = new GsonBuilder()
                 .disableHtmlEscaping()
                 .setPrettyPrinting()
                 .create();
         String json = gson.toJson(pref.getAll());
         DocumentHelper.writeString(json, docFile);
+        */
+        try (FileOutputStream out = new FileOutputStream(file + "/config.xml")) {
+            XmlUtils.writeMapXml(pref.getAll(), out);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 }

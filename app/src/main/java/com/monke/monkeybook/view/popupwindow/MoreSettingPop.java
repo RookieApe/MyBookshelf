@@ -2,6 +2,7 @@
 package com.monke.monkeybook.view.popupwindow;
 
 import android.annotation.SuppressLint;
+import android.graphics.Color;
 import android.support.annotation.NonNull;
 import android.support.v7.app.AlertDialog;
 import android.view.LayoutInflater;
@@ -12,10 +13,8 @@ import android.widget.PopupWindow;
 import android.widget.Switch;
 import android.widget.TextView;
 
-import com.hwangjr.rxbus.RxBus;
 import com.monke.monkeybook.R;
 import com.monke.monkeybook.help.ReadBookControl;
-import com.monke.monkeybook.help.RxBusTag;
 import com.monke.monkeybook.utils.barUtil.ImmersionBar;
 import com.monke.monkeybook.view.activity.ReadBookActivity;
 
@@ -35,6 +34,10 @@ public class MoreSettingPop extends PopupWindow {
     Switch sbShowTimeBattery;
     @BindView(R.id.sb_hideStatusBar)
     Switch sbHideStatusBar;
+    @BindView(R.id.reNavbarcolor)
+    TextView reNavbarcolor;
+    @BindView(R.id.reNavbarcolor_val)
+    TextView reNavbarcolor_val;
     @BindView(R.id.ll_hideStatusBar)
     LinearLayout llHideStatusBar;
     @BindView(R.id.ll_showTimeBattery)
@@ -45,10 +48,6 @@ public class MoreSettingPop extends PopupWindow {
     LinearLayout llHideNavigationBar;
     @BindView(R.id.sb_showLine)
     Switch sbShowLine;
-    @BindView(R.id.sbImmersionBar)
-    Switch sbImmersionBar;
-    @BindView(R.id.llImmersionBar)
-    LinearLayout llImmersionBar;
     @BindView(R.id.llScreenTimeOut)
     LinearLayout llScreenTimeOut;
     @BindView(R.id.tv_screen_time_out)
@@ -67,18 +66,13 @@ public class MoreSettingPop extends PopupWindow {
     Switch swReadAloudKey;
     @BindView(R.id.ll_read_aloud_key)
     LinearLayout llReadAloudKey;
+    @BindView(R.id.sb_tip_margin_change)
+    Switch sbTipMarginChange;
+    @BindView(R.id.llNavigationBarColor)
+    LinearLayout llNavigationBarColor;
 
     private ReadBookActivity activity;
     private ReadBookControl readBookControl = ReadBookControl.getInstance();
-
-    public interface OnChangeProListener {
-        void keepScreenOnChange(int keepScreenOn);
-
-        void refresh();
-
-        void recreate();
-    }
-
     private OnChangeProListener changeProListener;
 
     @SuppressLint("InflateParams")
@@ -105,7 +99,7 @@ public class MoreSettingPop extends PopupWindow {
         sbHideStatusBar.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (buttonView.isPressed()) {
                 readBookControl.setHideStatusBar(isChecked);
-                changeProListener.refresh();
+                changeProListener.recreate();
                 upView();
             }
         });
@@ -142,29 +136,27 @@ public class MoreSettingPop extends PopupWindow {
             if (buttonView.isPressed()) {
                 readBookControl.setShowTitle(isChecked);
                 readBookControl.setLineChange(System.currentTimeMillis());
-                changeProListener.refresh();
+                changeProListener.recreate();
             }
         });
         sbShowTimeBattery.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (buttonView.isPressed()) {
                 readBookControl.setShowTimeBattery(isChecked);
                 readBookControl.setLineChange(System.currentTimeMillis());
-                changeProListener.refresh();
+                changeProListener.recreate();
             }
         });
         sbShowLine.setOnCheckedChangeListener((buttonView, isChecked) -> {
             if (buttonView.isPressed()) {
                 readBookControl.setShowLine(isChecked);
                 readBookControl.setLineChange(System.currentTimeMillis());
-                changeProListener.refresh();
+                changeProListener.recreate();
             }
         });
-        sbImmersionBar.setOnCheckedChangeListener((buttonView, isChecked) -> {
-            if (buttonView.isPressed()) {
-                readBookControl.setImmersionStatusBar(isChecked);
-                readBookControl.setLineChange(System.currentTimeMillis());
-                RxBus.get().post(RxBusTag.IMMERSION_CHANGE, true);
-                changeProListener.refresh();
+        sbTipMarginChange.setOnCheckedChangeListener((compoundButton, b) -> {
+            if (compoundButton.isPressed()) {
+                readBookControl.setTipMarginChange(b);
+                changeProListener.recreate();
             }
         });
         llScreenTimeOut.setOnClickListener(view -> {
@@ -185,8 +177,20 @@ public class MoreSettingPop extends PopupWindow {
                     .setSingleChoiceItems(activity.getResources().getStringArray(R.array.convert_s), readBookControl.getTextConvert(), (dialogInterface, i) -> {
                         readBookControl.setTextConvert(i);
                         upFConvert(i);
-                        changeProListener.recreate();
                         dialogInterface.dismiss();
+                        changeProListener.recreate();
+                    })
+                    .create();
+            dialog.show();
+        });
+        llNavigationBarColor.setOnClickListener(view -> {
+            AlertDialog dialog = new AlertDialog.Builder(activity)
+                    .setTitle(activity.getString(R.string.re_navigation_bar_color))
+                    .setSingleChoiceItems(activity.getResources().getStringArray(R.array.NavbarColors), readBookControl.getNavbarColor(), (dialogInterface, i) -> {
+                        readBookControl.setNavbarColor(i);
+                        upNavbarColor(i);
+                        dialogInterface.dismiss();
+                        changeProListener.recreate();
                     })
                     .create();
             dialog.show();
@@ -197,8 +201,8 @@ public class MoreSettingPop extends PopupWindow {
                     .setSingleChoiceItems(activity.getResources().getStringArray(R.array.screen_direction_list_title), readBookControl.getScreenDirection(), (dialogInterface, i) -> {
                         readBookControl.setScreenDirection(i);
                         upScreenDirection(i);
-                        changeProListener.recreate();
                         dialogInterface.dismiss();
+                        changeProListener.recreate();
                     })
                     .create();
             dialog.show();
@@ -209,6 +213,7 @@ public class MoreSettingPop extends PopupWindow {
         upScreenDirection(readBookControl.getScreenDirection());
         upScreenTimeOut(readBookControl.getScreenTimeOut());
         upFConvert(readBookControl.getTextConvert());
+        upNavbarColor(readBookControl.getNavbarColor());
         swVolumeNextPage.setChecked(readBookControl.getCanKeyTurn());
         swReadAloudKey.setChecked(readBookControl.getAloudCanKeyTurn());
         sbHideStatusBar.setChecked(readBookControl.getHideStatusBar());
@@ -218,7 +223,7 @@ public class MoreSettingPop extends PopupWindow {
         sbShowTitle.setChecked(readBookControl.getShowTitle());
         sbShowTimeBattery.setChecked(readBookControl.getShowTimeBattery());
         sbShowLine.setChecked(readBookControl.getShowLine());
-        sbImmersionBar.setChecked(readBookControl.getImmersionStatusBar());
+        sbTipMarginChange.setChecked(readBookControl.getTipMarginChange());
         upView();
     }
 
@@ -233,6 +238,11 @@ public class MoreSettingPop extends PopupWindow {
         } else {
             llReadAloudKey.setVisibility(View.GONE);
         }
+        if (readBookControl.getHideNavigationBar()) {
+            llNavigationBarColor.setVisibility(View.GONE);
+        } else {
+            llNavigationBarColor.setVisibility(View.VISIBLE);
+        }
     }
 
     private void upScreenTimeOut(int screenTimeOut) {
@@ -243,6 +253,10 @@ public class MoreSettingPop extends PopupWindow {
         tvJFConvert.setText(activity.getResources().getStringArray(R.array.convert_s)[fConvert]);
     }
 
+    private void upNavbarColor(int nColor) {
+        reNavbarcolor_val.setText(activity.getResources().getStringArray(R.array.NavbarColors)[nColor]);
+    }
+
     private void upScreenDirection(int screenDirection) {
         String[] screenDirectionListTitle = activity.getResources().getStringArray(R.array.screen_direction_list_title);
         if (screenDirection >= screenDirectionListTitle.length) {
@@ -250,6 +264,12 @@ public class MoreSettingPop extends PopupWindow {
         } else {
             tvScreenDirection.setText(screenDirectionListTitle[screenDirection]);
         }
+    }
+
+    public interface OnChangeProListener {
+        void keepScreenOnChange(int keepScreenOn);
+
+        void recreate();
     }
 
 }

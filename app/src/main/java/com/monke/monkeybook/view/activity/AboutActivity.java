@@ -14,7 +14,6 @@ import android.view.KeyEvent;
 import android.view.MenuItem;
 import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.monke.basemvplib.impl.IPresenter;
 import com.monke.monkeybook.MApplication;
@@ -60,10 +59,6 @@ public class AboutActivity extends MBaseActivity {
     TextView tvMail;
     @BindView(R.id.vw_mail)
     CardView vwMail;
-    @BindView(R.id.tv_source_rule)
-    TextView tvSourceRule;
-    @BindView(R.id.vw_source_rule)
-    CardView vwSourceRule;
     @BindView(R.id.tv_update)
     TextView tvUpdate;
     @BindView(R.id.vw_update)
@@ -82,6 +77,10 @@ public class AboutActivity extends MBaseActivity {
     TextView tvHomePage;
     @BindView(R.id.vw_home_page)
     CardView vwHomePage;
+    @BindView(R.id.tv_faq)
+    TextView tvFaq;
+    @BindView(R.id.vw_faq)
+    CardView vwFaq;
 
     private MoProgressHUD moProgressHUD;
     private String qq = "701903217 788025059";
@@ -126,15 +125,13 @@ public class AboutActivity extends MBaseActivity {
         setTextViewIconColor(tvMail);
         setTextViewIconColor(tvQq);
         setTextViewIconColor(tvScoring);
-        setTextViewIconColor(tvSourceRule);
         setTextViewIconColor(tvUpdate);
         setTextViewIconColor(tvUpdateLog);
         setTextViewIconColor(tvVersion);
-
+        setTextViewIconColor(tvFaq);
     }
 
     private void setTextViewIconColor(TextView textView) {
-        textView.getCompoundDrawablesRelative()[0].mutate();
         textView.getCompoundDrawablesRelative()[0].setColorFilter(getResources().getColor(R.color.tv_text_default), PorterDuff.Mode.SRC_ATOP);
     }
 
@@ -144,8 +141,7 @@ public class AboutActivity extends MBaseActivity {
         vwScoring.setOnClickListener(view -> openIntent(Intent.ACTION_VIEW, "market://details?id=" + getPackageName()));
         vwMail.setOnClickListener(view -> openIntent(Intent.ACTION_SENDTO, "mailto:kunfei.ge@gmail.com"));
         vwGit.setOnClickListener(view -> openIntent(Intent.ACTION_VIEW, getString(R.string.this_github_url)));
-        vwSourceRule.setOnClickListener(view -> openIntent(Intent.ACTION_VIEW, getString(R.string.source_rule_url)));
-        vwDisclaimer.setOnClickListener(view -> openIntent(Intent.ACTION_VIEW, getString(R.string.disclaimer_url)));
+        vwDisclaimer.setOnClickListener(view -> moProgressHUD.showAssetMarkdown("disclaimer.md"));
         vwUpdate.setOnClickListener(view -> UpdateManager.getInstance(this).checkUpdate(true));
         vwHomePage.setOnClickListener(view -> openIntent(Intent.ACTION_VIEW, getString(R.string.home_page_url)));
         vwQq.setOnClickListener(view -> {
@@ -153,10 +149,11 @@ public class AboutActivity extends MBaseActivity {
             ClipData clipData = ClipData.newPlainText(null, qq);
             if (clipboard != null) {
                 clipboard.setPrimaryClip(clipData);
-                Toast.makeText(this, R.string.copy_complete, Toast.LENGTH_SHORT).show();
+                toast(R.string.copy_complete);
             }
         });
         vwUpdateLog.setOnClickListener(view -> moProgressHUD.showAssetMarkdown("updateLog.md"));
+        vwFaq.setOnClickListener(view -> moProgressHUD.showAssetMarkdown("faq.md"));
     }
 
     @Override
@@ -171,7 +168,7 @@ public class AboutActivity extends MBaseActivity {
             startActivity(intent);
         } catch (Exception e) {
             e.printStackTrace();
-            Toast.makeText(this, R.string.can_not_open, Toast.LENGTH_SHORT).show();
+            toast(R.string.can_not_open, ERROR);
         }
     }
 

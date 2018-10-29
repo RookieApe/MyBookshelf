@@ -4,17 +4,18 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
-    android:padding="10dp">
+    android:orientation="vertical"
+    android:padding="5dp">
 
     <View
         android:layout_width="0dp"
         android:layout_height="match_parent"
         android:layout_weight="1" />
 
-    <FrameLayout
+    <RelativeLayout
         android:id="@+id/fl_content"
-        android:layout_width="100dp"
-        android:layout_height="139dp"
+        android:layout_width="85dp"
+        android:layout_height="116dp"
         android:layout_gravity="center"
         android:visibility="invisible">
 
@@ -27,51 +28,43 @@
             android:transitionName="img_cover"
             tools:ignore="UnusedAttribute" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
+        <FrameLayout
+            android:id="@+id/fl_has_new"
+            android:layout_width="26dp"
             android:layout_height="26dp"
-            android:layout_gravity="top"
-            android:background="#7f000000"
-            android:orientation="horizontal">
+            android:layout_alignParentRight="true"
+            tools:ignore="RtlHardcoded">
 
-            <com.monke.mprogressbar.MHorProgressBar
-                android:id="@+id/mpb_durProgress"
-                android:layout_width="0dp"
-                android:layout_height="3dp"
-                android:layout_weight="1"
-                android:layout_gravity="center_vertical"
-                app:fontdrawable="@color/d_blue"
-                app:cantouch="false"
-                app:bgdrawable="@color/white"
-                android:visibility="invisible"
-                tools:ignore="RtlHardcoded" />
-
-            <FrameLayout
-                android:id="@+id/fl_has_new"
+            <android.support.v7.widget.AppCompatImageView
+                android:id="@+id/iv_has_new"
                 android:layout_width="26dp"
-                android:layout_height="26dp">
+                android:layout_height="26dp"
+                android:padding="6dp"
+                android:src="@drawable/ic_circle_red_24dp"
+                app:tint="@color/colorAccent"
+                android:visibility="invisible" />
 
-                <ImageView
-                    android:id="@+id/iv_has_new"
-                    android:visibility="invisible"
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:padding="6dp"
-                    android:src="@drawable/ic_circle_red_24dp" />
+            <com.victor.loading.rotate.RotateLoading
+                android:id="@+id/rl_loading"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:layout_gravity="center"
+                android:visibility="invisible"
+                app:loading_color="@color/white"
+                app:loading_width="2dp" />
 
-                <com.victor.loading.rotate.RotateLoading
-                    android:id="@+id/rl_loading"
-                    android:layout_width="26dp"
-                    android:layout_height="26dp"
-                    android:visibility="invisible"
-                    app:loading_width="2dp"
-                    app:loading_color="@color/white"
-                    android:layout_gravity="center" />
+        </FrameLayout>
 
-            </FrameLayout>
-
-
-        </LinearLayout>
+        <com.monke.mprogressbar.MHorProgressBar
+            android:id="@+id/mpb_durProgress"
+            android:layout_width="match_parent"
+            android:layout_height="2dp"
+            android:layout_alignParentBottom="true"
+            android:visibility="invisible"
+            app:bgdrawable="@color/white"
+            app:cantouch="false"
+            app:fontdrawable="@color/d_blue"
+            tools:ignore="RtlHardcoded" />
 
         <ImageButton
             android:id="@+id/ib_content"
@@ -79,29 +72,20 @@
             android:layout_height="match_parent"
             android:background="@drawable/bg_ib_pre" />
 
-        <LinearLayout
-            android:layout_width="match_parent"
-            android:layout_height="26dp"
-            android:layout_gravity="bottom"
-            android:background="#7f000000"
-            android:orientation="vertical">
+    </RelativeLayout>
 
-            <me.grantland.widget.AutofitTextView
-                android:id="@+id/tv_name"
-                android:layout_width="match_parent"
-                android:layout_height="26dp"
-                android:layout_gravity="center_horizontal|bottom"
-                android:gravity="center"
-                android:paddingLeft="2dp"
-                android:paddingRight="2dp"
-                android:singleLine="true"
-                android:textColor="#ffffff"
-                android:textSize="12sp"
-                app:minTextSize="10sp" />
-
-        </LinearLayout>
-
-    </FrameLayout>
+    <me.grantland.widget.AutofitTextView
+        android:id="@+id/tv_name"
+        android:layout_width="match_parent"
+        android:layout_height="26dp"
+        android:layout_gravity="center_horizontal|bottom"
+        android:gravity="center"
+        android:paddingLeft="2dp"
+        android:paddingRight="2dp"
+        android:singleLine="true"
+        android:text="ss"
+        android:textSize="12sp"
+        app:minTextSize="10sp" />
 
     <View
         android:layout_width="0dp"

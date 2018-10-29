@@ -33,8 +33,6 @@ import com.monke.monkeybook.view.activity.DownloadActivity;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Timer;
-import java.util.TimerTask;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
@@ -51,21 +49,20 @@ public class DownloadService extends Service {
     public static final String pauseAction = "pauseAction";
     public static final String startAction = "startAction";
     public static final String addDownloadAction = "addDownload";
-    private final int notificationId = 19931118;
-
-    private SharedPreferences preferences;
-
-    public static Boolean isStartDownload = false;
-    private Boolean isDownloading = false;
-    private Boolean isFinish = false;
     private final static int ADD = 1;
     private final static int REMOVE = 2;
     private final static int CHECK = 3;
+    public static Boolean isStartDownload = false;
+    private final int notificationId = 19931118;
+    private SharedPreferences preferences;
+    private Boolean isDownloading = false;
+    private Boolean isFinish = false;
     private int totalChapters = 0;
     private int threadsNum;
     private List<DownloadChapterBean> downloadingChapter = new ArrayList<>();
     private ExecutorService executorService;
     private Scheduler scheduler;
+    private Handler handler = new Handler();
 
     @Override
     public void onCreate() {
@@ -79,7 +76,7 @@ public class DownloadService extends Service {
         //发送通知
         startForeground(notificationId, builder.build());
         RxBus.get().register(this);
-        preferences = getSharedPreferences("CONFIG", 0);
+        preferences = MApplication.getInstance().getConfigPreferences();
         threadsNum = preferences.getInt(this.getString(R.string.pk_threads_num), 6);
         executorService = Executors.newFixedThreadPool(threadsNum);
         scheduler = Schedulers.from(executorService);
@@ -236,9 +233,7 @@ public class DownloadService extends Service {
             isProgress(data);
             Observable.create((ObservableOnSubscribe<Boolean>) e -> {
                 e.onNext(!BookshelfHelp.isChapterCached(
-                        BookshelfHelp.getCachePathName(data),
-                        String.format("%d-%s", data.getDurChapterIndex(), data.getDurChapterName())
-                ));
+                        BookshelfHelp.getCachePathName(data), data.getDurChapterIndex(), data.getDurChapterName()));
                 e.onComplete();
             }).flatMap(result -> {
                 if (result) {
@@ -259,16 +254,11 @@ public class DownloadService extends Service {
                     .subscribe(new Observer<Boolean>() {
                         @Override
                         public void onSubscribe(Disposable d) {
-                            Timer timer = new Timer();
-                            timer.schedule(new TimerTask() {
-                                @Override
-                                public void run() {
-                                    if (!d.isDisposed()) {
-                                        d.dispose();
-                                        timer.cancel();
-                                    }
+                            handler.postDelayed(() -> {
+                                if (!d.isDisposed()) {
+                                    d.dispose();
                                 }
-                            }, 30*1000);
+                            }, 30 * 1000);
                         }
 
                         @Override
@@ -284,7 +274,7 @@ public class DownloadService extends Service {
                         @Override
                         public void onComplete() {
                             if (isStartDownload) {
-                                new Handler().postDelayed(() -> {
+                                handler.postDelayed(() -> {
                                     if (isStartDownload) {
                                         toDownload();
                                     } else {
@@ -437,8 +427,9 @@ public class DownloadService extends Service {
             isFinish = true;
             stopSelf();
             if (totalChapters > 0)
-                new Handler(Looper.getMainLooper()).post(() -> Toast.makeText(getApplicationContext(), "共下载"+totalChapters+"章", Toast.LENGTH_SHORT).show());
+                new Handler(Looper.getMainLooper()).post(() -> Toast.makeText(getApplicationContext(), "共下载" + totalChapters + "章", Toast.LENGTH_SHORT).show());
         }
+        cancelDownload();
     }
 
     @Subscribe(thread = EventThread.MAIN_THREAD, tags = {@Tag(RxBusTag.PAUSE_DOWNLOAD)})

@@ -9,14 +9,14 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.Animation;
 import android.view.animation.AnimationUtils;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.FrameLayout;
 
-import com.monke.basemvplib.BaseActivity;
 import com.monke.monkeybook.R;
+import com.monke.monkeybook.base.MBaseActivity;
 import com.monke.monkeybook.bean.BookShelfBean;
 import com.monke.monkeybook.bean.BookmarkBean;
 import com.monke.monkeybook.bean.ReplaceRuleBean;
+import com.monke.monkeybook.utils.SoftInputUtil;
 
 /**
  * 对话框
@@ -152,7 +152,7 @@ public class MoProgressHUD {
     public void dismiss() {
         //消失动画
         if (mSharedView != null && rootView != null && mSharedView.getParent() != null) {
-            hideIMM(rootView);
+            SoftInputUtil.hideIMM(context, rootView);
             if (!isFinishing) {
                 new Handler().post(() -> {
                     outAnim.setAnimationListener(outAnimListener);
@@ -189,14 +189,6 @@ public class MoProgressHUD {
             }
         }
         return false;
-    }
-
-    //隐藏输入法
-    private void hideIMM(View view) {
-        InputMethodManager imm = (InputMethodManager) context.getSystemService(Context.INPUT_METHOD_SERVICE);
-        if (imm != null) {
-            imm.hideSoftInputFromWindow(view.getWindowToken(), 0);
-        }
     }
 
     /**
@@ -308,7 +300,7 @@ public class MoProgressHUD {
     /**
      * 换源
      */
-    public void showChangeSource(BaseActivity activity, BookShelfBean bookShelf, ChangeSourceView.OnClickSource clickSource) {
+    public void showChangeSource(MBaseActivity activity, BookShelfBean bookShelf, ChangeSourceView.OnClickSource clickSource) {
         initCenter();
         initAnimation();
         canBack = true;

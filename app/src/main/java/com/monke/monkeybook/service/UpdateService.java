@@ -41,6 +41,7 @@ public class UpdateService extends Service {
     private UpdateInfoBean updateInfo;
     private boolean interceptFlag = false;
     private Disposable disposableDown;
+    private int count = 0;
 
     public static void startThis(Context context, UpdateInfoBean updateInfoBean) {
         Intent intent = new Intent(context, UpdateService.class);
@@ -68,7 +69,9 @@ public class UpdateService extends Service {
     public void onDestroy() {
         super.onDestroy();
         isRunning = false;
-        disposableDown.dispose();
+        if (disposableDown != null) {
+            disposableDown.dispose();
+        }
         stopForeground(true);
         RxBus.get().post(RxBusTag.UPDATE_APK_STATE, -1);
         RxBus.get().unregister(this);
@@ -87,12 +90,19 @@ public class UpdateService extends Service {
                         downloadApk(updateInfo.getUrl());
                         break;
                     case stopDownload:
-                        interceptFlag = true;
+                        stopDownload();
                         break;
                 }
             }
         }
         return super.onStartCommand(intent, flags, startId);
+    }
+
+    private void stopDownload() {
+        interceptFlag = true;
+        if (count == 0) {
+            stopSelf();
+        }
     }
 
     @Nullable
@@ -138,39 +148,42 @@ public class UpdateService extends Service {
             return;
         }
         Observable.create((ObservableOnSubscribe<Integer>) e -> {
-            URL url = new URL(apkUrl);
+            try {
+                URL url = new URL(apkUrl);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.connect();
+                int length = conn.getContentLength();
+                InputStream is = conn.getInputStream();
 
-            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
-            conn.connect();
-            int length = conn.getContentLength();
-            InputStream is = conn.getInputStream();
+                apkFilePath = UpdateManager.getSavePath(apkUrl.substring(apkUrl.lastIndexOf("/")));
+                File apkFile = new File(apkFilePath);
+                FileOutputStream fos = new FileOutputStream(apkFile);
 
-            apkFilePath = UpdateManager.getSavePath(apkUrl.substring(apkUrl.lastIndexOf("/")));
-            File apkFile = new File(apkFilePath);
-            FileOutputStream fos = new FileOutputStream(apkFile);
-
-            int count = 0;
-            byte buf[] = new byte[1024];
-            int numread;
-            do {
-                numread = is.read(buf);
-                count += numread;
-                int progress = (int) (((float) count / length) * 100);
-                //更新进度
-                e.onNext(progress);
-                if (numread <= 0) {
-                    //下载完成通知安装
-                    break;
+                byte buf[] = new byte[1024];
+                int numread;
+                do {
+                    numread = is.read(buf);
+                    count += numread;
+                    int progress = (int) (((float) count / length) * 100);
+                    //更新进度
+                    e.onNext(progress);
+                    if (numread <= 0) {
+                        //下载完成通知安装
+                        break;
+                    }
+                    fos.write(buf, 0, numread);
+                } while (!interceptFlag);//点击取消就停止下载.
+                fos.close();
+                is.close();
+                if (numread > 0) {
+                    apkFile.delete();
                 }
-                fos.write(buf, 0, numread);
-            } while (!interceptFlag);//点击取消就停止下载.
-            fos.close();
-            is.close();
-            if (numread > 0) {
-                apkFile.delete();
+                e.onNext(-1);
+            } catch (Exception exception) {
+                e.onError(exception);
+            } finally {
+                e.onComplete();
             }
-            e.onNext(-1);
-            e.onComplete();
         }).subscribeOn(Schedulers.io())
                 .observeOn(AndroidSchedulers.mainThread())
                 .subscribe(new Observer<Integer>() {

@@ -24,10 +24,6 @@ public class InputView {
     private OnInputOk onInputOk;
     private Context context;
 
-    public static InputView getInstance(MoProgressView moProgressView) {
-        return new InputView(moProgressView);
-    }
-
     private InputView(MoProgressView moProgressView) {
         this.moProgressView = moProgressView;
         this.context = moProgressView.getContext();
@@ -38,12 +34,18 @@ public class InputView {
         });
     }
 
+    public static InputView getInstance(MoProgressView moProgressView) {
+        return new InputView(moProgressView);
+    }
+
     void showInputView(final OnInputOk onInputOk, MoProgressHUD moProgressHUD, String title, String defaultValue) {
         this.moProgressHUD = moProgressHUD;
         this.onInputOk = onInputOk;
         tvTitle.setText(title);
         if (defaultValue != null) {
+            etInput.setTextSize(2, 16); // 2 --> sp
             etInput.setText(defaultValue);
+            etInput.setSelectAllOnFocus(true);
         }
     }
 

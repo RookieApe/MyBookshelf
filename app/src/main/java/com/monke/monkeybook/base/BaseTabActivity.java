@@ -5,6 +5,9 @@ import android.support.v4.app.Fragment;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentPagerAdapter;
 import android.support.v4.view.ViewPager;
+import android.view.LayoutInflater;
+import android.view.View;
+import android.widget.TextView;
 
 import com.monke.basemvplib.impl.IPresenter;
 import com.monke.monkeybook.R;
@@ -23,6 +26,8 @@ public abstract class BaseTabActivity<T extends IPresenter> extends MBaseActivit
     protected TabLayout mTlIndicator;
     @BindView(R.id.tab_vp)
     protected ViewPager mVp;
+    /**************Adapter***************/
+    protected TabFragmentPageAdapter tabFragmentPageAdapter;
     /************Params*******************/
     private List<Fragment> mFragmentList;
     private List<String> mTitleList;
@@ -46,8 +51,8 @@ public abstract class BaseTabActivity<T extends IPresenter> extends MBaseActivit
 
         checkParamsIsRight();
 
-        TabFragmentPageAdapter adapter = new TabFragmentPageAdapter(getSupportFragmentManager());
-        mVp.setAdapter(adapter);
+        tabFragmentPageAdapter = new TabFragmentPageAdapter(getSupportFragmentManager());
+        mVp.setAdapter(tabFragmentPageAdapter);
         mVp.setOffscreenPageLimit(3);
         mTlIndicator.setupWithViewPager(mVp);
     }
@@ -65,7 +70,7 @@ public abstract class BaseTabActivity<T extends IPresenter> extends MBaseActivit
     }
 
     /******************inner class*****************/
-    class TabFragmentPageAdapter extends FragmentPagerAdapter {
+    public class TabFragmentPageAdapter extends FragmentPagerAdapter {
 
         public TabFragmentPageAdapter(FragmentManager fm) {
             super(fm);
@@ -85,5 +90,6 @@ public abstract class BaseTabActivity<T extends IPresenter> extends MBaseActivit
         public CharSequence getPageTitle(int position) {
             return mTitleList.get(position);
         }
+
     }
 }

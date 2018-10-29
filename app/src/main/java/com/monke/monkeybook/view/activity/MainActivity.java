@@ -9,19 +9,17 @@ import android.content.res.Configuration;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.NonNull;
+import android.support.design.widget.CoordinatorLayout;
 import android.support.design.widget.NavigationView;
-import android.support.design.widget.Snackbar;
+import android.support.design.widget.TabLayout;
+import android.support.v4.app.Fragment;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.widget.DrawerLayout;
-import android.support.v4.widget.SwipeRefreshLayout;
 import android.support.v7.app.ActionBar;
 import android.support.v7.app.ActionBarDrawerToggle;
 import android.support.v7.app.AlertDialog;
-import android.support.v7.widget.GridLayoutManager;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
+import android.support.v7.widget.CardView;
 import android.support.v7.widget.Toolbar;
-import android.support.v7.widget.helper.ItemTouchHelper;
 import android.text.TextUtils;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
@@ -29,47 +27,48 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
-import android.widget.LinearLayout;
+import android.view.ViewGroup;
+import android.view.ViewParent;
+import android.widget.ImageView;
+import android.widget.PopupMenu;
 import android.widget.Switch;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import com.monke.monkeybook.BitIntentDataManager;
+import com.hwangjr.rxbus.RxBus;
 import com.monke.monkeybook.BuildConfig;
 import com.monke.monkeybook.MApplication;
 import com.monke.monkeybook.R;
-import com.monke.monkeybook.base.MBaseActivity;
-import com.monke.monkeybook.bean.BookShelfBean;
-import com.monke.monkeybook.dao.DbHelper;
+import com.monke.monkeybook.base.BaseTabActivity;
 import com.monke.monkeybook.help.ACache;
 import com.monke.monkeybook.help.BookshelfHelp;
+import com.monke.monkeybook.help.DataBackup;
 import com.monke.monkeybook.help.LauncherIcon;
-import com.monke.monkeybook.help.MyItemTouchHelpCallback;
+import com.monke.monkeybook.help.RxBusTag;
 import com.monke.monkeybook.help.UpdateManager;
 import com.monke.monkeybook.model.BookSourceManage;
-import com.monke.monkeybook.presenter.BookDetailPresenterImpl;
 import com.monke.monkeybook.presenter.MainPresenterImpl;
-import com.monke.monkeybook.presenter.ReadBookPresenterImpl;
 import com.monke.monkeybook.presenter.contract.MainContract;
-import com.monke.monkeybook.view.adapter.BookShelfGridAdapter;
-import com.monke.monkeybook.view.adapter.BookShelfListAdapter;
-import com.monke.monkeybook.view.adapter.base.OnItemClickListenerTwo;
+import com.monke.monkeybook.view.fragment.BookListFragment;
+import com.monke.monkeybook.view.fragment.FindBookFragment;
 import com.monke.monkeybook.widget.modialog.MoProgressHUD;
 
-import static com.monke.monkeybook.utils.NetworkUtil.isNetWorkAvailable;
-
+import java.util.Arrays;
 import java.util.List;
+import java.util.Objects;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
 
-public class MainActivity extends MBaseActivity<MainContract.Presenter> implements MainContract.View {
+import static com.monke.monkeybook.help.Constant.BOOK_GROUPS;
+import static com.monke.monkeybook.utils.NetworkUtil.isNetWorkAvailable;
+
+public class MainActivity extends BaseTabActivity<MainContract.Presenter> implements MainContract.View, BookListFragment.CallBackValue {
     private static final int BACKUP_RESULT = 11;
     private static final int RESTORE_RESULT = 12;
     private static final int FILE_SELECT_RESULT = 13;
-    private static final int REQUEST_CODE_SIGN_IN = 14;
+    private static String[] mTitles = new String[]{"书架", "发现"};
 
     @BindView(R.id.drawer)
     DrawerLayout drawer;
@@ -77,26 +76,17 @@ public class MainActivity extends MBaseActivity<MainContract.Presenter> implemen
     NavigationView navigationView;
     @BindView(R.id.toolbar)
     Toolbar toolbar;
-    @BindView(R.id.refreshLayout)
-    SwipeRefreshLayout refreshLayout;
-    @BindView(R.id.rv_bookshelf)
-    RecyclerView rvBookshelf;
     @BindView(R.id.main_view)
-    LinearLayout mainView;
-    @BindView(R.id.ll_content)
-    LinearLayout llContent;
+    CoordinatorLayout mainView;
+    @BindView(R.id.card_search)
+    CardView cardSearch;
 
-    private TextView tvUser;
     private Switch swNightTheme;
     private int group;
-    private BookShelfGridAdapter bookShelfGridAdapter;
-    private BookShelfListAdapter bookShelfListAdapter;
     private boolean viewIsList;
     private ActionBarDrawerToggle mDrawerToggle;
     private MoProgressHUD moProgressHUD;
     private long exitTime = 0;
-    private String bookPx;
-    private boolean isRecreate;
     private boolean resumed = false;
 
     @Override
@@ -107,22 +97,22 @@ public class MainActivity extends MBaseActivity<MainContract.Presenter> implemen
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         if (savedInstanceState != null) {
-            group = savedInstanceState.getInt("group");
             resumed = savedInstanceState.getBoolean("resumed");
         }
+        group = preferences.getInt("bookshelfGroup", 0);
         super.onCreate(savedInstanceState);
     }
 
     @Override
     protected void onSaveInstanceState(Bundle outState) {
         super.onSaveInstanceState(outState);
-        outState.putInt("group", group);
         outState.putBoolean("resumed", resumed);
     }
 
     @Override
     protected void onCreateActivity() {
         setContentView(R.layout.activity_main);
+        ButterKnife.bind(this);
     }
 
     /**
@@ -135,22 +125,17 @@ public class MainActivity extends MBaseActivity<MainContract.Presenter> implemen
 
     @Override
     protected void initData() {
-        isRecreate = getIntent().getBooleanExtra("isRecreate", false);
-        getIntent().putExtra("isRecreate", true);
         viewIsList = preferences.getBoolean("bookshelfIsList", true);
-        bookPx = preferences.getString(getString(R.string.pk_bookshelf_px), "0");
     }
 
-    private List<BookShelfBean> getBookshelfList() {
-        if (viewIsList) {
-            return bookShelfListAdapter.getBooks();
-        } else {
-            return bookShelfGridAdapter.getBooks();
-        }
+    @Override
+    public boolean isRecreate() {
+        return isRecreate;
     }
 
-    private boolean getNeedAnim() {
-        return preferences.getBoolean(getString(R.string.pk_bookshelf_anim), false);
+    @Override
+    public int getGroup() {
+        return group;
     }
 
     @Override
@@ -158,24 +143,93 @@ public class MainActivity extends MBaseActivity<MainContract.Presenter> implemen
         return super.dispatchTouchEvent(ev);
     }
 
+    /**************abstract***********/
+    @Override
+    protected List<Fragment> createTabFragments() {
+        BookListFragment bookListFragment = new BookListFragment();
+        FindBookFragment findBookFragment = new FindBookFragment();
+        return Arrays.asList(bookListFragment, findBookFragment);
+    }
+
+    @Override
+    protected List<String> createTabTitles() {
+        return Arrays.asList(mTitles);
+    }
+
     @Override
     protected void bindView() {
-        ButterKnife.bind(this);
+        super.bindView();
         setSupportActionBar(toolbar);
         setupActionBar();
         initDrawer();
+        initTabLayout();
         upGroup(group);
         moProgressHUD = new MoProgressHUD(this);
-        refreshLayout.setColorSchemeColors(getResources().getColor(R.color.colorAccent));
-        if (viewIsList) {
-            bookShelfListAdapter = new BookShelfListAdapter(this, getNeedAnim());
-            rvBookshelf.setAdapter(bookShelfListAdapter);
-            rvBookshelf.setLayoutManager(new LinearLayoutManager(this));
-        } else {
-            bookShelfGridAdapter = new BookShelfGridAdapter(this, getNeedAnim());
-            rvBookshelf.setAdapter(bookShelfGridAdapter);
-            rvBookshelf.setLayoutManager(new GridLayoutManager(this, 3));
+
+        //点击跳转搜索页
+        cardSearch.setOnClickListener(view -> startActivityByAnim(new Intent(this, SearchBookActivity.class),
+                toolbar, "sharedView", android.R.anim.fade_in, android.R.anim.fade_out));
+    }
+
+    //初始化TabLayout和ViewPager
+    private void initTabLayout(){
+
+        //TabLayout使用自定义Item
+        for (int i = 0; i < mTlIndicator.getTabCount(); i++) {
+            TabLayout.Tab tab = mTlIndicator.getTabAt(i);
+            if (tab != null) {
+                tab.setCustomView(tab_icon(mTitles[i], null));
+                if (tab.getCustomView() != null) {
+                    View tabView = (View) tab.getCustomView().getParent();
+                    tabView.setTag(i);
+                    //设置第一个Item的点击事件(当下标为0时触发)
+                    if (i==0){
+                        tabView.setOnClickListener(view -> {
+                            if (tabView.isSelected()){
+                                //切换书架
+                                PopupMenu popupMenu = new PopupMenu(this, view);
+                                for (int j = 0; j < BOOK_GROUPS.length; j++) {
+                                    popupMenu.getMenu().add(0, 0, j, BOOK_GROUPS[j]);
+                                }
+                                popupMenu.setOnMenuItemClickListener(menuItem -> {
+                                    upGroup(menuItem.getOrder());
+                                    return true;
+                                });
+                                popupMenu.show();
+                            }
+                        });
+                    }
+                }
+            }
         }
+    }
+
+    private void updateTabItemText(int group){
+        TabLayout.Tab tab = mTlIndicator.getTabAt(0);
+        //首先移除原先View
+        assert tab != null;
+        final ViewParent customParent= tab.getCustomView().getParent();
+        if (customParent != null) {
+            ((ViewGroup) customParent).removeView(tab.getCustomView());
+        }
+
+        tab.setCustomView(tab_icon(BOOK_GROUPS[group], R.drawable.ic_arrow_drop_down_black_24dp));
+        View tabView = (View) tab.getCustomView().getParent();
+        tabView.setTag(0);
+    }
+
+    private View tab_icon(String name,Integer iconID){
+        View tabView =  LayoutInflater.from(this).inflate(R.layout.tab_view_icon_right,null);
+        TextView tv = tabView.findViewById(R.id.tabtext);
+        tv.setText(name);
+        ImageView im = tabView.findViewById(R.id.tabicon);
+        if (iconID != null) {
+            im.setVisibility(View.VISIBLE);
+            im.setImageResource(iconID);
+        } else {
+            im.setVisibility(View.GONE);
+        }
+        return tabView;
     }
 
     @Override
@@ -186,82 +240,6 @@ public class MainActivity extends MBaseActivity<MainContract.Presenter> implemen
         if (swNightTheme != null) {
             swNightTheme.setChecked(isNightTheme());
         }
-    }
-
-    @Override
-    protected void onPause() {
-        resumed = true;
-        super.onPause();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        if (resumed) {
-            resumed = false;
-            stopBookShelfRefreshAnim();
-        }
-    }
-
-    @Override
-    protected void bindEvent() {
-        refreshLayout.setOnRefreshListener(() -> {
-            mPresenter.queryBookShelf(isNetWorkAvailable(), group);
-            if (!isNetWorkAvailable()) {
-                Toast.makeText(this, "无网络，请打开网络后再试。", Toast.LENGTH_SHORT).show();
-            }
-            refreshLayout.setRefreshing(false);
-        });
-        MyItemTouchHelpCallback itemTouchHelpCallback = new MyItemTouchHelpCallback();
-        if (bookPx.equals("2")) {
-            itemTouchHelpCallback.setDragEnable(true);
-            ItemTouchHelper itemTouchHelper = new ItemTouchHelper(itemTouchHelpCallback);
-            itemTouchHelper.attachToRecyclerView(rvBookshelf);
-        } else {
-            itemTouchHelpCallback.setDragEnable(false);
-            ItemTouchHelper itemTouchHelper = new ItemTouchHelper(itemTouchHelpCallback);
-            itemTouchHelper.attachToRecyclerView(rvBookshelf);
-        }
-        if (viewIsList) {
-            bookShelfListAdapter.setItemClickListener(getAdapterListener());
-            itemTouchHelpCallback.setOnItemTouchCallbackListener(bookShelfListAdapter.getItemTouchCallbackListener());
-        } else {
-            bookShelfGridAdapter.setItemClickListener(getAdapterListener());
-            itemTouchHelpCallback.setOnItemTouchCallbackListener(bookShelfGridAdapter.getItemTouchCallbackListener());
-        }
-
-    }
-
-    private OnItemClickListenerTwo getAdapterListener() {
-        return new OnItemClickListenerTwo() {
-            @Override
-            public void onClick(View view, int index) {
-                BookShelfBean bookShelfBean = getBookshelfList().get(index);
-                bookShelfBean.setHasUpdate(false);
-                DbHelper.getInstance().getmDaoSession().getBookShelfBeanDao().insertOrReplace(bookShelfBean);
-                Intent intent = new Intent(MainActivity.this, ReadBookActivity.class);
-                intent.putExtra("openFrom", ReadBookPresenterImpl.OPEN_FROM_APP);
-                String key = String.valueOf(System.currentTimeMillis());
-                intent.putExtra("data_key", key);
-                try {
-                    BitIntentDataManager.getInstance().putData(key, bookShelfBean.clone());
-                } catch (CloneNotSupportedException e) {
-                    BitIntentDataManager.getInstance().putData(key, bookShelfBean);
-                    e.printStackTrace();
-                }
-                startActivityByAnim(intent, android.R.anim.fade_in, android.R.anim.fade_out);
-            }
-
-            @Override
-            public void onLongClick(View view, int index) {
-                Intent intent = new Intent(MainActivity.this, BookDetailActivity.class);
-                intent.putExtra("openFrom", BookDetailPresenterImpl.FROM_BOOKSHELF);
-                String key = String.valueOf(System.currentTimeMillis());
-                intent.putExtra("data_key", key);
-                BitIntentDataManager.getInstance().putData(key, getBookshelfList().get(index));
-                startActivityByAnim(intent, view, "img_cover", android.R.anim.fade_in, android.R.anim.fade_out);
-            }
-        };
     }
 
     @Override
@@ -290,15 +268,6 @@ public class MainActivity extends MBaseActivity<MainContract.Presenter> implemen
         SharedPreferences.Editor editor = preferences.edit();
         int id = item.getItemId();
         switch (id) {
-            case R.id.action_search:
-                //点击搜索
-                startActivityByAnim(new Intent(this, SearchBookActivity.class),
-                        toolbar, "sharedView", android.R.anim.fade_in, android.R.anim.fade_out);
-                break;
-            case R.id.action_library:
-                startActivityByAnim(new Intent(this, FindBookActivity.class),
-                        toolbar, "sharedView", android.R.anim.fade_in, android.R.anim.fade_out);
-                break;
             case R.id.action_add_local:
                 if (EasyPermissions.hasPermissions(this, MApplication.PerList)) {
                     startActivity(new Intent(this, ImportBookActivity.class));
@@ -310,14 +279,11 @@ public class MainActivity extends MBaseActivity<MainContract.Presenter> implemen
             case R.id.action_add_url:
                 moProgressHUD.showInputBox("添加书籍网址", null, inputText -> mPresenter.addBookUrl(inputText));
                 break;
-            case R.id.action_download:
-                startActivity(new Intent(this, DownloadActivity.class));
-                break;
             case R.id.action_download_all:
                 if (!isNetWorkAvailable())
-                    Toast.makeText(this, "网络连接不可用，无法下载！", Toast.LENGTH_SHORT).show();
+                    toast("网络连接不可用，无法下载！");
                 else
-                    mPresenter.downloadAll(0, false);
+                    RxBus.get().post(RxBusTag.DOWNLOAD_ALL, 1000);
                 break;
             case R.id.action_list_grid:
                 editor.putBoolean("bookshelfIsList", !viewIsList);
@@ -360,7 +326,6 @@ public class MainActivity extends MBaseActivity<MainContract.Presenter> implemen
         ActionBar actionBar = getSupportActionBar();
         if (actionBar != null) {
             actionBar.setDisplayHomeAsUpEnabled(true);
-            actionBar.setTitle("阅读");
         }
     }
 
@@ -382,24 +347,22 @@ public class MainActivity extends MBaseActivity<MainContract.Presenter> implemen
 
     private void upGroup(int group) {
         if (this.group != group) {
-            this.group = group;
-            mPresenter.queryBookShelf(false, group);
+            SharedPreferences.Editor editor = preferences.edit();
+            editor.putInt("bookshelfGroup", group);
+            editor.apply();
         }
-        switch (group) {
-            case 1:
-                navigationView.setCheckedItem(R.id.action_group_yf);
-                break;
-            default:
-                navigationView.setCheckedItem(R.id.action_group_zg);
-                break;
-        }
+        this.group = group;
+        RxBus.get().post(RxBusTag.UPDATE_GROUP, group);
+        RxBus.get().post(RxBusTag.REFRESH_BOOK_LIST, false);
+        //更换Tab文字
+        updateTabItemText(group);
+
     }
 
     //侧边栏按钮
     private void setUpNavigationView() {
         @SuppressLint("InflateParams") View headerView = LayoutInflater.from(this).inflate(R.layout.navigation_header, null);
         navigationView.addHeaderView(headerView);
-        tvUser = headerView.findViewById(R.id.tv_user);
         ColorStateList colorStateList = getResources().getColorStateList(R.color.navigation_color);
         navigationView.setItemTextColor(colorStateList);
         navigationView.setItemIconTintList(colorStateList);
@@ -414,17 +377,14 @@ public class MainActivity extends MBaseActivity<MainContract.Presenter> implemen
         navigationView.setNavigationItemSelectedListener(menuItem -> {
             drawer.closeDrawers();
             switch (menuItem.getItemId()) {
-                case R.id.action_group_zg:
-                    upGroup(0);
-                    break;
-                case R.id.action_group_yf:
-                    upGroup(1);
-                    break;
                 case R.id.action_book_source_manage:
                     new Handler().postDelayed(() -> BookSourceActivity.startThis(this), 200);
                     break;
                 case R.id.action_replace_rule:
                     new Handler().postDelayed(() -> ReplaceRuleActivity.startThis(this), 200);
+                    break;
+                case R.id.action_download:
+                    new Handler().postDelayed(() -> DownloadActivity.startThis(this), 200);
                     break;
                 case R.id.action_setting:
                     new Handler().postDelayed(() -> SettingActivity.startThis(this), 200);
@@ -517,16 +477,6 @@ public class MainActivity extends MBaseActivity<MainContract.Presenter> implemen
 
     @Override
     protected void firstRequest() {
-        if (preferences.getBoolean(getString(R.string.pk_auto_refresh), false) & !isRecreate) {
-            if (isNetWorkAvailable()) {
-                mPresenter.queryBookShelf(true, group);
-            } else {
-                mPresenter.queryBookShelf(false, group);
-                Toast.makeText(this, "无网络，自动刷新失败！", Toast.LENGTH_SHORT).show();
-            }
-        } else {
-            mPresenter.queryBookShelf(false, group);
-        }
         if (!isRecreate) {
             versionUpRun();
             requestPermission();
@@ -537,48 +487,13 @@ public class MainActivity extends MBaseActivity<MainContract.Presenter> implemen
     }
 
     @Override
-    public void refreshBookShelf(List<BookShelfBean> bookShelfBeanList) {
-        if (viewIsList) {
-            bookShelfListAdapter.replaceAll(bookShelfBeanList, bookPx);
-        } else {
-            bookShelfGridAdapter.replaceAll(bookShelfBeanList, bookPx);
-        }
-    }
-
-    @Override
-    public void refreshBook(String noteUrl) {
-        if (viewIsList) {
-            bookShelfListAdapter.refreshBook(noteUrl);
-        } else {
-            bookShelfGridAdapter.refreshBook(noteUrl);
-        }
-    }
-
-    private void stopBookShelfRefreshAnim() {
-        List<BookShelfBean> bookShelfBeans = getBookshelfList();
-        if (bookShelfBeans != null && bookShelfBeans.size() > 0) {
-            for (BookShelfBean bookShelfBean: bookShelfBeans) {
-                if (bookShelfBean.isLoading()) {
-                    bookShelfBean.setLoading(false);
-                    refreshBook(bookShelfBean.getNoteUrl());
-                }
-            }
-        }
-    }
-
-    @Override
-    public void activityRefreshView() {
-
-    }
-
-    @Override
     public void dismissHUD() {
         moProgressHUD.dismiss();
     }
 
     @Override
     public void refreshError(String error) {
-        Toast.makeText(this, error, Toast.LENGTH_SHORT).show();
+        toast(error);
     }
 
     @Override
@@ -589,11 +504,6 @@ public class MainActivity extends MBaseActivity<MainContract.Presenter> implemen
     @Override
     public void onRestore(String msg) {
         moProgressHUD.showLoading(msg);
-    }
-
-    @Override
-    public SharedPreferences getPreferences() {
-        return preferences;
     }
 
     @Override
@@ -608,6 +518,9 @@ public class MainActivity extends MBaseActivity<MainContract.Presenter> implemen
         Boolean mo = moProgressHUD.onKeyDown(keyCode, event);
         if (mo) {
             return true;
+        } else if (mTlIndicator.getSelectedTabPosition() != 0){
+            Objects.requireNonNull(mTlIndicator.getTabAt(0)).select();
+            return true;
         } else {
             if (keyCode == KeyEvent.KEYCODE_BACK) {
                 if (drawer.isDrawerOpen(GravityCompat.START)) {
@@ -621,21 +534,14 @@ public class MainActivity extends MBaseActivity<MainContract.Presenter> implemen
         }
     }
 
-    @Override
-    public void recreate(){
-        super.recreate();
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-    }
-
     public void exit() {
         if ((System.currentTimeMillis() - exitTime) > 2000) {
-            Snackbar.make(rvBookshelf, "再按一次退出程序", Snackbar.LENGTH_SHORT).show();
+            if (getCurrentFocus() != null) {
+                showSnackBar("再按一次退出程序");
+            }
             exitTime = System.currentTimeMillis();
         } else {
+            DataBackup.getInstance().autoSave();
             finish();
         }
     }

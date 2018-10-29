@@ -10,7 +10,6 @@ import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.monke.monkeybook.R;
 import com.monke.monkeybook.base.MBaseActivity;
@@ -116,7 +115,7 @@ public class ChoiceBookActivity extends MBaseActivity<ChoiceBookContract.Present
                 Intent intent = new Intent(ChoiceBookActivity.this, BookDetailActivity.class);
                 intent.putExtra("openFrom", BookDetailPresenterImpl.FROM_SEARCH);
                 intent.putExtra("data", searchBookBean);
-                startActivityByAnim(intent, animView, "img_cover", android.R.anim.fade_in, android.R.anim.fade_out);
+                startActivityByAnim(intent, android.R.anim.fade_in, android.R.anim.fade_out);
             }
         });
 
@@ -191,7 +190,7 @@ public class ChoiceBookActivity extends MBaseActivity<ChoiceBookContract.Present
 
     @Override
     public void addBookShelfFailed(String massage) {
-        Toast.makeText(this, massage, Toast.LENGTH_SHORT).show();
+        toast(massage, ERROR);
     }
 
     @Override

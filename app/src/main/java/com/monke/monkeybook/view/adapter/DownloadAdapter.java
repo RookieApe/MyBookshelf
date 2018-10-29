@@ -1,6 +1,5 @@
 package com.monke.monkeybook.view.adapter;
 
-import android.graphics.PorterDuff;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -43,8 +42,6 @@ public class DownloadAdapter extends RecyclerView.Adapter<DownloadAdapter.MyView
 
     @Override
     public void onBindViewHolder(@NonNull MyViewHolder holder, int position) {
-        holder.ivDel.getDrawable().mutate();
-        holder.ivDel.getDrawable().setColorFilter(activity.getResources().getColor(R.color.tv_text_default), PorterDuff.Mode.SRC_ATOP);
         Glide.with(activity)
                 .load(dataS.get(position).getCoverUrl())
                 .apply(new RequestOptions()

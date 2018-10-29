@@ -2,7 +2,6 @@ package com.monke.monkeybook.presenter;
 
 import android.content.Intent;
 import android.support.annotation.NonNull;
-import android.widget.Toast;
 
 import com.hwangjr.rxbus.RxBus;
 import com.hwangjr.rxbus.annotation.Subscribe;
@@ -12,13 +11,14 @@ import com.monke.basemvplib.BaseActivity;
 import com.monke.basemvplib.BasePresenterImpl;
 import com.monke.basemvplib.impl.IView;
 import com.monke.monkeybook.BitIntentDataManager;
-import com.monke.monkeybook.MApplication;
 import com.monke.monkeybook.base.observer.SimpleObserver;
 import com.monke.monkeybook.bean.BookShelfBean;
+import com.monke.monkeybook.bean.BookSourceBean;
 import com.monke.monkeybook.bean.SearchBookBean;
 import com.monke.monkeybook.help.BookshelfHelp;
 import com.monke.monkeybook.help.RxBusTag;
 import com.monke.monkeybook.model.WebBookModelImpl;
+import com.monke.monkeybook.model.source.My716;
 import com.monke.monkeybook.presenter.contract.BookDetailContract;
 import com.trello.rxlifecycle2.android.ActivityEvent;
 
@@ -26,6 +26,8 @@ import io.reactivex.Observable;
 import io.reactivex.ObservableOnSubscribe;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.schedulers.Schedulers;
+
+import static com.monke.monkeybook.widget.modialog.ChangeSourceView.savedSource;
 
 public class BookDetailPresenterImpl extends BasePresenterImpl<BookDetailContract.View> implements BookDetailContract.Presenter {
     public final static int FROM_BOOKSHELF = 1;
@@ -114,7 +116,7 @@ public class BookDetailPresenterImpl extends BasePresenterImpl<BookDetailContrac
 
                     @Override
                     public void onError(Throwable e) {
-                        Toast.makeText(mView.getContext(), e.getMessage(), Toast.LENGTH_SHORT).show();
+                        mView.toast(e.getMessage());
                         mView.getBookShelfError();
                     }
                 });
@@ -139,14 +141,14 @@ public class BookDetailPresenterImpl extends BasePresenterImpl<BookDetailContrac
                                 RxBus.get().post(RxBusTag.HAD_ADD_BOOK, bookShelf);
                                 mView.updateView();
                             } else {
-                                Toast.makeText(MApplication.getInstance(), "放入书架失败!", Toast.LENGTH_SHORT).show();
+                                mView.toast("放入书架失败!");
                             }
                         }
 
                         @Override
                         public void onError(Throwable e) {
                             e.printStackTrace();
-                            Toast.makeText(MApplication.getInstance(), "放入书架失败!", Toast.LENGTH_SHORT).show();
+                            mView.toast("放入书架失败!");
                         }
                     });
         }
@@ -171,14 +173,14 @@ public class BookDetailPresenterImpl extends BasePresenterImpl<BookDetailContrac
                                 RxBus.get().post(RxBusTag.HAD_REMOVE_BOOK, bookShelf);
                                 mView.updateView();
                             } else {
-                                Toast.makeText(MApplication.getInstance(), "移出书架失败!", Toast.LENGTH_SHORT).show();
+                                mView.toast("删除书籍失败！");
                             }
                         }
 
                         @Override
                         public void onError(Throwable e) {
                             e.printStackTrace();
-                            Toast.makeText(MApplication.getInstance(), "移出书架失败!", Toast.LENGTH_SHORT).show();
+                            mView.toast("删除书籍失败！");
                         }
                     });
         }
@@ -208,7 +210,7 @@ public class BookDetailPresenterImpl extends BasePresenterImpl<BookDetailContrac
                     @Override
                     public void onError(Throwable e) {
                         mView.updateView();
-                        Toast.makeText(MApplication.getInstance(), "换源失败！" + e.getMessage(), Toast.LENGTH_SHORT).show();
+                        mView.toast("换源失败！" + e.getMessage());
                     }
                 });
     }
@@ -236,13 +238,31 @@ public class BookDetailPresenterImpl extends BasePresenterImpl<BookDetailContrac
                         RxBus.get().post(RxBusTag.HAD_ADD_BOOK, value);
                         bookShelf = value;
                         mView.updateView();
+                        String tag = bookShelf.getTag();
+                        if (tag != My716.TAG) {
+                            try {
+                                long currentTime = System.currentTimeMillis();
+                                String bookName = bookShelf.getBookInfoBean().getName();
+                                BookSourceBean bookSourceBean = BookshelfHelp.getBookSourceByTag(tag);
+                                if (savedSource.getBookSource() != null && currentTime - savedSource.getSaveTime() < 60000 && savedSource.getBookName().equals(bookName))
+                                    savedSource.getBookSource().increaseWeight(-450);
+                                BookshelfHelp.saveBookSource(savedSource.getBookSource());
+                                savedSource.setBookName(bookName);
+                                savedSource.setSaveTime(currentTime);
+                                savedSource.setBookSource(bookSourceBean);
+                                bookSourceBean.increaseWeightBySelection();
+                                BookshelfHelp.saveBookSource(bookSourceBean);
+                            } catch (Exception e) {
+                                e.printStackTrace();
+                            }
+                        }
                     }
 
                     @Override
                     public void onError(Throwable e) {
                         e.printStackTrace();
                         mView.updateView();
-                        Toast.makeText(MApplication.getInstance(), e.getMessage(), Toast.LENGTH_SHORT).show();
+                        mView.toast(e.getMessage());
                     }
                 });
     }

@@ -2,13 +2,16 @@ package com.monke.monkeybook.bean;
 
 import android.os.Parcel;
 import android.os.Parcelable;
+import android.text.TextUtils;
 
 import org.greenrobot.greendao.annotation.Entity;
 import org.greenrobot.greendao.annotation.Generated;
 import org.greenrobot.greendao.annotation.Id;
+import org.greenrobot.greendao.annotation.NotNull;
 import org.greenrobot.greendao.annotation.OrderBy;
 import org.greenrobot.greendao.annotation.Transient;
 
+import java.util.ArrayList;
 import java.util.Objects;
 
 import static android.text.TextUtils.isEmpty;
@@ -26,6 +29,9 @@ public class BookSourceBean implements Parcelable, Cloneable {
     private String checkUrl;
     @OrderBy
     private int serialNumber;
+    @OrderBy
+    @NotNull
+    private int weight = 0;
     private boolean enable;
     private String ruleFindUrl;
     private String ruleSearchUrl;
@@ -48,6 +54,8 @@ public class BookSourceBean implements Parcelable, Cloneable {
     private String ruleContentUrlNext;
     private String ruleBookContent;
     private String httpUserAgent;
+    @Transient
+    private ArrayList<String> groupList;
 
 
     @Transient
@@ -69,6 +77,7 @@ public class BookSourceBean implements Parcelable, Cloneable {
         bookSourceGroup = in.readString();
         checkUrl = in.readString();
         serialNumber = in.readInt();
+        weight = in.readInt();
         enable = in.readByte() != 0;
 
         ruleFindUrl = in.readString();
@@ -94,8 +103,8 @@ public class BookSourceBean implements Parcelable, Cloneable {
         httpUserAgent = in.readString();
     }
 
-    @Generated(hash = 2055894182)
-    public BookSourceBean(String bookSourceUrl, String bookSourceName, String bookSourceGroup, String checkUrl, int serialNumber,
+    @Generated(hash = 1575328468)
+    public BookSourceBean(String bookSourceUrl, String bookSourceName, String bookSourceGroup, String checkUrl, int serialNumber, int weight,
             boolean enable, String ruleFindUrl, String ruleSearchUrl, String ruleSearchList, String ruleSearchName, String ruleSearchAuthor,
             String ruleSearchKind, String ruleSearchLastChapter, String ruleSearchCoverUrl, String ruleSearchNoteUrl, String ruleBookName,
             String ruleBookAuthor, String ruleChapterUrl, String ruleChapterUrlNext, String ruleCoverUrl, String ruleIntroduce,
@@ -106,6 +115,7 @@ public class BookSourceBean implements Parcelable, Cloneable {
         this.bookSourceGroup = bookSourceGroup;
         this.checkUrl = checkUrl;
         this.serialNumber = serialNumber;
+        this.weight = weight;
         this.enable = enable;
         this.ruleFindUrl = ruleFindUrl;
         this.ruleSearchUrl = ruleSearchUrl;
@@ -145,8 +155,8 @@ public class BookSourceBean implements Parcelable, Cloneable {
         parcel.writeString(bookSourceGroup);
         parcel.writeString(checkUrl);
         parcel.writeInt(serialNumber);
+        parcel.writeInt(weight);
         parcel.writeByte((byte) (enable ? 1 : 0));
-
         parcel.writeString(ruleFindUrl);
         parcel.writeString(ruleSearchUrl);
         parcel.writeString(ruleSearchList);
@@ -233,6 +243,23 @@ public class BookSourceBean implements Parcelable, Cloneable {
 
     public void setSerialNumber(int serialNumber) {
         this.serialNumber = serialNumber;
+    }
+
+    public int getWeight() {
+        return this.weight;
+    }
+
+    public void setWeight(int weight) {
+        this.weight = weight;
+    }
+
+    // 换源时选择的源权重+500
+    public void increaseWeightBySelection() {
+        this.weight += 500;
+    }
+
+    public void increaseWeight(int increase) {
+        this.weight += increase;
     }
 
     public boolean getEnable() {
@@ -401,6 +428,8 @@ public class BookSourceBean implements Parcelable, Cloneable {
 
     public void setBookSourceGroup(String bookSourceGroup) {
         this.bookSourceGroup = bookSourceGroup;
+        upGroupList();
+        this.bookSourceGroup = TextUtils.join("; ", groupList);
     }
 
     public String getCheckUrl() {
@@ -425,5 +454,41 @@ public class BookSourceBean implements Parcelable, Cloneable {
 
     public void setRuleContentUrlNext(String ruleContentUrlNext) {
         this.ruleContentUrlNext = ruleContentUrlNext;
+    }
+
+    private void upGroupList() {
+        groupList = new ArrayList<>();
+        if (!TextUtils.isEmpty(bookSourceGroup)) {
+            for (String group : bookSourceGroup.split("\\s*[,;，；]\\s*")) {
+                group = group.trim();
+                if (TextUtils.isEmpty(group) || groupList.contains(group)) continue;
+                groupList.add(group);
+            }
+        }
+    }
+
+    public void addGroup(String group) {
+        if (groupList == null)
+            upGroupList();
+        if (!groupList.contains(group)) {
+            groupList.add(group);
+            bookSourceGroup = TextUtils.join("; ", groupList);
+        }
+    }
+
+    public void removeGroup(String group) {
+        if (groupList == null)
+            upGroupList();
+        if (groupList.contains(group)) {
+            groupList.remove(group);
+            bookSourceGroup = TextUtils.join("; ", groupList);
+        }
+    }
+
+    public boolean containsGroup(String group) {
+        if (groupList == null) {
+            upGroupList();
+        }
+        return groupList.contains(group);
     }
 }

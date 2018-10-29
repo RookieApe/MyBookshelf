@@ -166,6 +166,14 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
         saveDate(adapter.getDataList());
     }
 
+    private void revertSelection() {
+        for (BookSourceBean bookSourceBean : adapter.getDataList()) {
+            bookSourceBean.setEnable(!bookSourceBean.getEnable());
+        }
+        adapter.notifyDataSetChanged();
+        saveDate(adapter.getDataList());
+    }
+
     public void upSearchView(int size) {
         searchView.setQueryHint(getString(R.string.search_book_source_num, size));
     }
@@ -178,17 +186,13 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
                     .whereOr(BookSourceBeanDao.Properties.BookSourceName.like(term),
                             BookSourceBeanDao.Properties.BookSourceGroup.like(term),
                             BookSourceBeanDao.Properties.BookSourceUrl.like(term))
+                    .orderRaw("-WEIGHT ASC")
                     .orderAsc(BookSourceBeanDao.Properties.SerialNumber)
                     .list();
             adapter.resetDataS(sourceBeanList);
         } else {
             adapter.resetDataS(BookSourceManage.getAllBookSource());
         }
-    }
-
-    @Override
-    public Snackbar getSnackBar(String msg, int length) {
-        return Snackbar.make(llContent, msg, length);
     }
 
     public void delBookSource(BookSourceBean bookSource) {
@@ -201,11 +205,6 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
 
     public void saveDate(List<BookSourceBean> date) {
         mPresenter.saveData(date);
-    }
-
-    @Override
-    public void showSnackBar(String msg, int length) {
-        Snackbar.make(llContent, msg, length).show();
     }
 
     //设置ToolBar
@@ -254,6 +253,9 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
                             mPresenter.importBookSource(inputText);
                         });
                 break;
+            case R.id.action_revert_selection:
+                revertSelection();
+                break;
             case R.id.action_del_select:
                 mPresenter.delData(adapter.getSelectDataList());
                 break;
@@ -296,11 +298,8 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
             FilePicker filePicker = new FilePicker(this, FilePicker.FILE);
             filePicker.setBackgroundColor(getResources().getColor(R.color.background));
             filePicker.setTopBackgroundColor(getResources().getColor(R.color.background));
-            filePicker.setItemHeight(30);
             filePicker.setAllowExtensions(getResources().getStringArray(R.array.text_suffix));
-            filePicker.setOnFilePickListener(s -> {
-                mPresenter.importBookSourceLocal(s);
-            });
+            filePicker.setOnFilePickListener(s -> mPresenter.importBookSourceLocal(s));
             filePicker.show();
             filePicker.getSubmitButton().setText(R.string.sys_file_picker);
             filePicker.getSubmitButton().setOnClickListener(view -> {
@@ -364,6 +363,16 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
             }
         }
         return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public Snackbar getSnackBar(String msg, int length) {
+        return Snackbar.make(llContent, msg, length);
+    }
+
+    @Override
+    public void showSnackBar(String msg, int length) {
+        super.showSnackBar(llContent, msg, length);
     }
 
 }

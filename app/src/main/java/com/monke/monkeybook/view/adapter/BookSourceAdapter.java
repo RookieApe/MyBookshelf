@@ -1,7 +1,6 @@
 package com.monke.monkeybook.view.adapter;
 
 import android.content.Intent;
-import android.graphics.PorterDuff;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
@@ -14,6 +13,8 @@ import android.widget.ImageView;
 import com.monke.monkeybook.BitIntentDataManager;
 import com.monke.monkeybook.R;
 import com.monke.monkeybook.bean.BookSourceBean;
+import com.monke.monkeybook.dao.DbHelper;
+import com.monke.monkeybook.help.BookshelfHelp;
 import com.monke.monkeybook.help.MyItemTouchHelpCallback;
 import com.monke.monkeybook.model.BookSourceManage;
 import com.monke.monkeybook.view.activity.BookSourceActivity;
@@ -108,8 +109,6 @@ public class BookSourceAdapter extends RecyclerView.Adapter<BookSourceAdapter.My
             activity.saveDate(dataList.get(position));
             activity.upDateSelectAll();
         });
-        holder.editView.getDrawable().mutate();
-        holder.editView.getDrawable().setColorFilter(activity.getResources().getColor(R.color.tv_text_default), PorterDuff.Mode.SRC_ATOP);
         holder.editView.setOnClickListener(view -> {
             Intent intent = new Intent(activity, SourceEditActivity.class);
             String key = String.valueOf(System.currentTimeMillis());
@@ -122,27 +121,27 @@ public class BookSourceAdapter extends RecyclerView.Adapter<BookSourceAdapter.My
             }
             activity.startActivityForResult(intent, BookSourceActivity.EDIT_SOURCE);
         });
-        holder.delView.getDrawable().mutate();
-        holder.delView.getDrawable().setColorFilter(activity.getResources().getColor(R.color.tv_text_default), PorterDuff.Mode.SRC_ATOP);
         holder.delView.setOnClickListener(view -> {
             activity.delBookSource(dataList.get(position));
             dataList.remove(position);
+            activity.upSearchView(dataList.size());
             notifyDataSetChanged();
         });
-        holder.topView.getDrawable().mutate();
-        holder.topView.getDrawable().setColorFilter(activity.getResources().getColor(R.color.tv_text_default), PorterDuff.Mode.SRC_ATOP);
         holder.topView.setOnClickListener(view -> {
             allDataList(BookSourceManage.getAllBookSource());
-
             BookSourceBean moveData = dataList.get(position);
+            int maxWeight = DbHelper.getInstance().getmDaoSession().getBookSourceBeanDao().queryBuilder()
+                    .orderRaw("-WEIGHT ASC").limit(1).unique().getWeight();
+            moveData.setWeight(maxWeight + 1);
+            BookshelfHelp.saveBookSource(moveData);
             dataList.remove(position);
             notifyItemInserted(0);
-            dataList.add(0,moveData);
+            dataList.add(0, moveData);
             notifyItemRemoved(position + 1);
 
-            if (dataList.size() != allDataList.size()){
-                for (int i = 0;i < allDataList.size();i++){
-                    if (moveData.equals(allDataList.get(i))){
+            if (dataList.size() != allDataList.size()) {
+                for (int i = 0; i < allDataList.size(); i++) {
+                    if (moveData.equals(allDataList.get(i))) {
                         index = i;
                         break;
                     }
@@ -150,7 +149,7 @@ public class BookSourceAdapter extends RecyclerView.Adapter<BookSourceAdapter.My
                 BookSourceBean moveDataA = allDataList.get(index);
                 allDataList.remove(index);
                 notifyItemInserted(0);
-                allDataList.add(0,moveDataA);
+                allDataList.add(0, moveDataA);
                 notifyItemRemoved(index + 1);
             }
             notifyDataSetChanged();

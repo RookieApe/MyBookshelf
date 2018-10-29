@@ -1,6 +1,5 @@
 package com.monke.monkeybook.view.adapter;
 
-import android.graphics.PorterDuff;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
@@ -43,13 +42,13 @@ public class ReplaceRuleAdapter extends RecyclerView.Adapter<ReplaceRuleAdapter.
         }
     };
 
-    public MyItemTouchHelpCallback.OnItemTouchCallbackListener getItemTouchCallbackListener() {
-        return itemTouchCallbackListener;
-    }
-
     public ReplaceRuleAdapter(ReplaceRuleActivity activity) {
         this.activity = activity;
         dataList = new ArrayList<>();
+    }
+
+    public MyItemTouchHelpCallback.OnItemTouchCallbackListener getItemTouchCallbackListener() {
+        return itemTouchCallbackListener;
     }
 
     public void resetDataS(List<ReplaceRuleBean> dataList) {
@@ -79,11 +78,7 @@ public class ReplaceRuleAdapter extends RecyclerView.Adapter<ReplaceRuleAdapter.
             activity.upDateSelectAll();
             activity.saveDataS();
         });
-        holder.editView.getDrawable().mutate();
-        holder.editView.getDrawable().setColorFilter(activity.getResources().getColor(R.color.tv_text_default), PorterDuff.Mode.SRC_ATOP);
         holder.editView.setOnClickListener(view -> activity.editReplaceRule(dataList.get(position)));
-        holder.delView.getDrawable().mutate();
-        holder.delView.getDrawable().setColorFilter(activity.getResources().getColor(R.color.tv_text_default), PorterDuff.Mode.SRC_ATOP);
         holder.delView.setOnClickListener(view -> {
             activity.delData(dataList.get(position));
             dataList.remove(position);
