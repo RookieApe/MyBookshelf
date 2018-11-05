@@ -7,6 +7,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.database.Cursor;
 import android.net.Uri;
+import android.os.AsyncTask;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
 import android.text.TextUtils;
@@ -28,7 +29,6 @@ import com.monke.monkeybook.bean.BookmarkBean;
 import com.monke.monkeybook.bean.ChapterListBean;
 import com.monke.monkeybook.bean.LocBookShelfBean;
 import com.monke.monkeybook.bean.SearchBookBean;
-import com.monke.monkeybook.dao.BookShelfBeanDao;
 import com.monke.monkeybook.dao.BookSourceBeanDao;
 import com.monke.monkeybook.dao.DbHelper;
 import com.monke.monkeybook.help.ACache;
@@ -66,6 +66,15 @@ public class ReadBookPresenterImpl extends BasePresenterImpl<ReadBookContract.Vi
         open_from = intent.getData() != null ? OPEN_FROM_OTHER : OPEN_FROM_APP;
         open_from = intent.getIntExtra("openFrom", open_from);
         if (open_from == OPEN_FROM_APP) {
+            loadBook(intent);
+        } else {
+            mView.openBookFromOther();
+            mView.upMenu();
+        }
+    }
+
+    private void loadBook(Intent intent) {
+        Observable.create((ObservableOnSubscribe<BookShelfBean>) e -> {
             if (bookShelf == null) {
                 String key = intent.getStringExtra("data_key");
                 bookShelf = (BookShelfBean) BitIntentDataManager.getInstance().getData(key);
@@ -80,15 +89,33 @@ public class ReadBookPresenterImpl extends BasePresenterImpl<ReadBookContract.Vi
                     bookShelf = beans.get(0);
                 }
             }
-            if (bookShelf == null || TextUtils.isEmpty(bookShelf.getBookInfoBean().getName())) {
-                mView.finish();
-                return;
+            if (bookShelf != null) {
+                bookShelf.getBookInfoBean().setChapterList(BookshelfHelp.getChapterList(bookShelf.getNoteUrl()));
+                bookShelf.getBookInfoBean().setBookmarkList(BookshelfHelp.getBookmarkList(bookShelf.getBookInfoBean().getName()));
+                mView.setAdd(BookshelfHelp.isInBookShelf(bookShelf.getNoteUrl()));
             }
-            checkInShelf();
-        } else {
-            mView.openBookFromOther();
-        }
-        mView.showMenu();
+            e.onNext(bookShelf);
+            e.onComplete();
+        }).subscribeOn(Schedulers.io())
+                .compose(((BaseActivity) mView.getContext()).bindUntilEvent(ActivityEvent.DESTROY))
+                .observeOn(AndroidSchedulers.mainThread())
+                .subscribe(new SimpleObserver<BookShelfBean>() {
+                    @Override
+                    public void onNext(BookShelfBean bookShelfBean) {
+                        if (bookShelf == null || TextUtils.isEmpty(bookShelf.getBookInfoBean().getName())) {
+                            mView.finish();
+                        } else {
+                            mView.setHpbReadProgressMax(0);
+                            mView.startLoadingBook();
+                            mView.upMenu();
+                        }
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        mView.finish();
+                    }
+                });
     }
 
     /**
@@ -172,7 +199,7 @@ public class ReadBookPresenterImpl extends BasePresenterImpl<ReadBookContract.Vi
                                         if (value.getNew())
                                             RxBus.get().post(RxBusTag.HAD_ADD_BOOK, value);
                                         bookShelf = value.getBookShelfBean();
-                                        checkInShelf();
+                                        mView.setAdd(BookshelfHelp.isInBookShelf(bookShelf.getNoteUrl()));
                                     }
 
                                     @Override
@@ -324,57 +351,17 @@ public class ReadBookPresenterImpl extends BasePresenterImpl<ReadBookContract.Vi
         return bookShelf;
     }
 
-    private void checkInShelf() {
-        Observable.create((ObservableOnSubscribe<Boolean>) e -> {
-            bookShelf.getBookInfoBean().setChapterList(BookshelfHelp.getChapterList(bookShelf.getNoteUrl()));
-            bookShelf.getBookInfoBean().setBookmarkList(BookshelfHelp.getBookmarkList(bookShelf.getBookInfoBean().getName()));
-            List<BookShelfBean> temp = DbHelper.getInstance().getmDaoSession().getBookShelfBeanDao().queryBuilder().where(BookShelfBeanDao.Properties.NoteUrl.eq(bookShelf.getNoteUrl())).build().list();
-            e.onNext(!(temp == null || temp.size() == 0));
-            e.onComplete();
-        }).subscribeOn(Schedulers.io())
-                .compose(((BaseActivity) mView.getContext()).bindUntilEvent(ActivityEvent.DESTROY))
-                .observeOn(AndroidSchedulers.mainThread())
-                .subscribe(new SimpleObserver<Boolean>() {
-                    @Override
-                    public void onNext(Boolean value) {
-                        mView.setAdd(value);
-                        mView.setHpbReadProgressMax(0);
-                        mView.startLoadingBook();
-                    }
-
-                    @Override
-                    public void onError(Throwable e) {
-                        e.printStackTrace();
-                    }
-                });
-    }
-
     @Override
     public void addToShelf(final OnAddListener addListener) {
         if (bookShelf != null) {
-            Observable.create((ObservableOnSubscribe<Boolean>) e -> {
-                DbHelper.getInstance().getmDaoSession().getChapterListBeanDao().insertOrReplaceInTx(bookShelf.getChapterList());
-                DbHelper.getInstance().getmDaoSession().getBookInfoBeanDao().insertOrReplace(bookShelf.getBookInfoBean());
-                //网络数据获取成功  存入BookShelf表数据库
-                DbHelper.getInstance().getmDaoSession().getBookShelfBeanDao().insertOrReplace(bookShelf);
+            AsyncTask.execute(() -> {
+                BookshelfHelp.saveBookToShelf(bookShelf);
                 RxBus.get().post(RxBusTag.HAD_ADD_BOOK, bookShelf);
                 mView.setAdd(true);
-                e.onNext(true);
-                e.onComplete();
-            }).subscribeOn(Schedulers.io())
-                    .observeOn(AndroidSchedulers.mainThread())
-                    .subscribe(new SimpleObserver<Object>() {
-                        @Override
-                        public void onNext(Object value) {
-                            if (addListener != null)
-                                addListener.addSuccess();
-                        }
-
-                        @Override
-                        public void onError(Throwable e) {
-
-                        }
-                    });
+                if (addListener != null) {
+                    addListener.addSuccess();
+                }
+            });
         }
     }
 

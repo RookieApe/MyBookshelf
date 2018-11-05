@@ -3,7 +3,6 @@ package com.monke.monkeybook.help;
 import android.annotation.SuppressLint;
 import android.text.TextUtils;
 
-import com.monke.monkeybook.MApplication;
 import com.monke.monkeybook.bean.BookInfoBean;
 import com.monke.monkeybook.bean.BookShelfBean;
 import com.monke.monkeybook.bean.BookSourceBean;
@@ -140,7 +139,6 @@ public class BookshelfHelp {
             setChapterIsCached(folderName, index, true);
             return true;
         } catch (IOException e) {
-            MApplication.getInstance().setDownloadPath(FileHelp.getCachePath());
             e.printStackTrace();
             return false;
         }
@@ -288,6 +286,17 @@ public class BookshelfHelp {
             } catch (Exception e) {
             }
         }
+    }
+
+    public static boolean isInBookShelf(String bookUrl) {
+        if (bookUrl == null) {
+            return false;
+        }
+
+        long count = DbHelper.getInstance().getmDaoSession().getBookShelfBeanDao().queryBuilder()
+                .where(BookShelfBeanDao.Properties.NoteUrl.eq(bookUrl))
+                .count();
+        return count > 0;
     }
 
     public static void removeFromBookShelf(BookShelfBean bookShelfBean) {

@@ -79,9 +79,14 @@ public class ReadBookControl {
         return readBookControl;
     }
 
+
     private ReadBookControl() {
-        initTextDrawable();
         readPreference = MApplication.getInstance().getConfigPreferences();
+        initTextDrawable();
+        updateReaderSettings();
+    }
+
+    public void updateReaderSettings() {
         this.hideStatusBar = readPreference.getBoolean("hide_status_bar", false);
         this.hideNavigationBar = readPreference.getBoolean("hide_navigation_bar", false);
         this.textSize = readPreference.getInt("textSize", 20);
@@ -171,6 +176,7 @@ public class ReadBookControl {
 
     private void initPageStyle(Context context) {
         try {
+            //noinspection ConstantConditions
             bgColor = textDrawable.get(textDrawableIndex).get("textBackground");
             if (getBgCustom(textDrawableIndex) == 2 && getBgPath(textDrawableIndex) != null) {
                 bgIsColor = false;
@@ -184,6 +190,7 @@ public class ReadBookControl {
                 return;
             }
             bgIsColor = true;
+            //noinspection ConstantConditions
             bgColor = textDrawable.get(textDrawableIndex).get("textBackground");
         } catch (Exception e) {
             setBgCustom(textDrawableIndex, 0);

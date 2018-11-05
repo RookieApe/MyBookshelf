@@ -169,41 +169,45 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
 
     //初始化TabLayout和ViewPager
     private void initTabLayout() {
-
         //TabLayout使用自定义Item
         for (int i = 0; i < mTlIndicator.getTabCount(); i++) {
             TabLayout.Tab tab = mTlIndicator.getTabAt(i);
-            if (tab != null) {
-                tab.setCustomView(tab_icon(mTitles[i], null));
-                if (tab.getCustomView() != null) {
-                    View tabView = (View) tab.getCustomView().getParent();
-                    tabView.setTag(i);
-                    //设置第一个Item的点击事件(当下标为0时触发)
-                    if (i == 0) {
-                        tabView.setOnClickListener(view -> {
-                            if (tabView.isSelected()) {
-                                //切换书架
-                                PopupMenu popupMenu = new PopupMenu(this, view);
-                                for (int j = 0; j < BOOK_GROUPS.length; j++) {
-                                    popupMenu.getMenu().add(0, 0, j, BOOK_GROUPS[j]);
-                                }
-                                popupMenu.setOnMenuItemClickListener(menuItem -> {
-                                    upGroup(menuItem.getOrder());
-                                    return true;
-                                });
-                                popupMenu.show();
-                            }
-                        });
+            if (tab == null) return;
+            tab.setCustomView(tab_icon(mTitles[i], null));
+            if (tab.getCustomView() == null) return;
+            View tabView = (View) tab.getCustomView().getParent();
+            tabView.setTag(i);
+            //设置第一个Item的点击事件(当下标为0时触发)
+            if (i == 0) {
+                tabView.setOnClickListener(view -> {
+                    if (tabView.isSelected()) {
+                        showBookGroupMenu(view);
                     }
-                }
+                });
             }
         }
+    }
+
+    /**
+     * 显示分组菜单
+     */
+    private void showBookGroupMenu(View view) {
+        PopupMenu popupMenu = new PopupMenu(this, view);
+        for (int j = 0; j < BOOK_GROUPS.length; j++) {
+            popupMenu.getMenu().add(0, 0, j, BOOK_GROUPS[j]);
+        }
+        popupMenu.setOnMenuItemClickListener(menuItem -> {
+            upGroup(menuItem.getOrder());
+            return true;
+        });
+        popupMenu.show();
     }
 
     private void updateTabItemText(int group) {
         TabLayout.Tab tab = mTlIndicator.getTabAt(0);
         //首先移除原先View
-        final ViewParent customParent = tab.getCustomView().getParent();
+        if (tab == null) return;
+        final ViewParent customParent = Objects.requireNonNull(tab.getCustomView()).getParent();
         if (customParent != null) {
             ((ViewGroup) customParent).removeView(tab.getCustomView());
         }
@@ -213,8 +217,9 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
         tabView.setTag(0);
     }
 
-    private View tab_icon(String name,Integer iconID){
-        View tabView =  LayoutInflater.from(this).inflate(R.layout.tab_view_icon_right,null);
+    private View tab_icon(String name, Integer iconID) {
+        @SuppressLint("InflateParams")
+        View tabView = LayoutInflater.from(this).inflate(R.layout.tab_view_icon_right, null);
         TextView tv = tabView.findViewById(R.id.tabtext);
         tv.setText(name);
         ImageView im = tabView.findViewById(R.id.tabicon);
@@ -272,7 +277,10 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
                 }
                 break;
             case R.id.action_add_url:
-                moProgressHUD.showInputBox("添加书籍网址", null, inputText -> mPresenter.addBookUrl(inputText));
+                moProgressHUD.showInputBox("添加书籍网址",
+                        null,
+                        null,
+                        inputText -> mPresenter.addBookUrl(inputText));
                 break;
             case R.id.action_download_all:
                 if (!isNetWorkAvailable())
@@ -298,7 +306,8 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
                         .setTitle(R.string.clear_bookshelf)
                         .setMessage(R.string.clear_bookshelf_s)
                         .setPositiveButton(R.string.ok, (dialog, which) -> mPresenter.clearBookshelf())
-                        .setNegativeButton(R.string.cancel, (dialogInterface, i) -> { })
+                        .setNegativeButton(R.string.cancel, (dialogInterface, i) -> {
+                        })
                         .show();
                 break;
             case R.id.action_change_icon:
@@ -412,7 +421,8 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
                     .setTitle(R.string.backup_confirmation)
                     .setMessage(R.string.backup_message)
                     .setPositiveButton(R.string.ok, (dialog, which) -> mPresenter.backupData())
-                    .setNegativeButton(R.string.cancel, (dialogInterface, i) -> { })
+                    .setNegativeButton(R.string.cancel, (dialogInterface, i) -> {
+                    })
                     .show();
         } else {
             EasyPermissions.requestPermissions(this, getString(R.string.backup_permission),
@@ -432,7 +442,8 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
                     .setTitle(R.string.restore_confirmation)
                     .setMessage(R.string.restore_message)
                     .setPositiveButton(R.string.ok, (dialog, which) -> mPresenter.restoreData())
-                    .setNegativeButton(R.string.cancel, (dialogInterface, i) -> { })
+                    .setNegativeButton(R.string.cancel, (dialogInterface, i) -> {
+                    })
                     .show();
         } else {
             EasyPermissions.requestPermissions(this, getString(R.string.restore_permission),
