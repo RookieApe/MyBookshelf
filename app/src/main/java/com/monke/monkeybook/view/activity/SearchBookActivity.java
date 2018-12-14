@@ -22,6 +22,7 @@ import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.google.android.flexbox.FlexboxLayout;
 import com.hwangjr.rxbus.RxBus;
 import com.monke.monkeybook.R;
 import com.monke.monkeybook.base.MBaseActivity;
@@ -29,14 +30,12 @@ import com.monke.monkeybook.bean.SearchBookBean;
 import com.monke.monkeybook.bean.SearchHistoryBean;
 import com.monke.monkeybook.help.ACache;
 import com.monke.monkeybook.help.RxBusTag;
-import com.monke.monkeybook.presenter.BookDetailPresenterImpl;
-import com.monke.monkeybook.presenter.SearchBookPresenterImpl;
+import com.monke.monkeybook.presenter.BookDetailPresenter;
+import com.monke.monkeybook.presenter.SearchBookPresenter;
 import com.monke.monkeybook.presenter.contract.SearchBookContract;
 import com.monke.monkeybook.utils.SharedPreferencesUtil;
 import com.monke.monkeybook.utils.SoftInputUtil;
 import com.monke.monkeybook.view.adapter.SearchBookAdapter;
-import com.monke.monkeybook.view.adapter.SearchHistoryAdapter;
-import com.monke.monkeybook.widget.flowlayout.TagFlowLayout;
 import com.monke.monkeybook.widget.refreshview.OnLoadMoreListener;
 import com.monke.monkeybook.widget.refreshview.RefreshRecyclerView;
 
@@ -58,21 +57,45 @@ public class SearchBookActivity extends MBaseActivity<SearchBookContract.Present
     @BindView(R.id.tv_search_history_clean)
     TextView tvSearchHistoryClean;
     @BindView(R.id.tfl_search_history)
-    TagFlowLayout tflSearchHistory;
+    FlexboxLayout tflSearchHistory;
     @BindView(R.id.rfRv_search_books)
     RefreshRecyclerView rfRvSearchBooks;
     @BindView(R.id.fabSearchStop)
     FloatingActionButton fabSearchStop;
 
-    MenuItem itemMy716;
-    MenuItem itemDonate;
-    private SearchHistoryAdapter searchHistoryAdapter;
+    private Menu menu;
     private ExplosionField explosionField;
     private SearchBookAdapter searchBookAdapter;
     private SearchView.SearchAutoComplete mSearchAutoComplete;
     private boolean showHistory;
     private boolean useMy716;
     private String searchKey;
+
+    private final View.OnClickListener historyItemClick = new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            SearchHistoryBean searchHistoryBean = (SearchHistoryBean) v.getTag();
+            searchView.setQuery(searchHistoryBean.getContent(), true);
+        }
+    };
+
+    private final View.OnLongClickListener historyItemLongClick = new View.OnLongClickListener() {
+        @Override
+        public boolean onLongClick(View view) {
+            SearchHistoryBean searchHistoryBean = (SearchHistoryBean) view.getTag();
+            explosionField.explode(view);
+            mPresenter.cleanSearchHistory(searchHistoryBean);
+            return true;
+        }
+    };
+
+    private final View.OnClickListener hideSettingItemClick = new View.OnClickListener() {
+        @Override
+        public void onClick(View view) {
+            String text = "set:" + view.getTag();
+            searchView.setQuery(text, false);
+        }
+    };
 
     public static void startByKey(Context context, String searchKey) {
         Intent intent = new Intent(context, SearchBookActivity.class);
@@ -88,7 +111,7 @@ public class SearchBookActivity extends MBaseActivity<SearchBookContract.Present
     @Override
     protected SearchBookContract.Presenter initInjector() {
         useMy716 = !Objects.equals(ACache.get(this).getAsString("useMy716"), "False");
-        return new SearchBookPresenterImpl(this, useMy716);
+        return new SearchBookPresenter(this, useMy716);
     }
 
     @Override
@@ -99,7 +122,6 @@ public class SearchBookActivity extends MBaseActivity<SearchBookContract.Present
     @Override
     protected void initData() {
         explosionField = ExplosionField.attach2Window(this);
-        searchHistoryAdapter = new SearchHistoryAdapter();
         searchBookAdapter = new SearchBookAdapter(this);
     }
 
@@ -112,9 +134,6 @@ public class SearchBookActivity extends MBaseActivity<SearchBookContract.Present
         initSearchView();
         fabSearchStop.hide();
         llSearchHistory.setOnClickListener(null);
-
-        tflSearchHistory.setAdapter(searchHistoryAdapter);
-
         rfRvSearchBooks.setRefreshRecyclerViewAdapter(searchBookAdapter, new LinearLayoutManager(this));
 
         View viewRefreshError = LayoutInflater.from(this).inflate(R.layout.view_searchbook_refresh_error, null);
@@ -127,19 +146,11 @@ public class SearchBookActivity extends MBaseActivity<SearchBookContract.Present
         rfRvSearchBooks.setNoDataAndrRefreshErrorView(LayoutInflater.from(this).inflate(R.layout.view_searchbook_no_data, null),
                 viewRefreshError);
 
-        searchBookAdapter.setItemClickListener(new SearchBookAdapter.OnItemClickListener() {
-            @Override
-            public void clickAddShelf(View clickView, int position, SearchBookBean searchBookBean) {
-                mPresenter.addBookToShelf(searchBookBean);
-            }
-
-            @Override
-            public void clickItem(View animView, int position, SearchBookBean searchBookBean) {
-                Intent intent = new Intent(SearchBookActivity.this, BookDetailActivity.class);
-                intent.putExtra("openFrom", BookDetailPresenterImpl.FROM_SEARCH);
-                intent.putExtra("data", searchBookBean);
-                startActivityByAnim(intent, android.R.anim.fade_in, android.R.anim.fade_out);
-            }
+        searchBookAdapter.setItemClickListener((view, position) -> {
+            Intent intent = new Intent(SearchBookActivity.this, BookDetailActivity.class);
+            intent.putExtra("openFrom", BookDetailPresenter.FROM_SEARCH);
+            intent.putExtra("data", searchBookAdapter.getItemData(position));
+            startActivityByAnim(intent, android.R.anim.fade_in, android.R.anim.fade_out);
         });
 
         fabSearchStop.setOnClickListener(view -> {
@@ -160,14 +171,13 @@ public class SearchBookActivity extends MBaseActivity<SearchBookContract.Present
     // 添加菜单
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_search_activity, menu);
+        getMenuInflater().inflate(R.menu.menu_book_search_activity, menu);
         return super.onCreateOptionsMenu(menu);
     }
 
     @Override
     public boolean onPrepareOptionsMenu(Menu menu) {
-        itemMy716 = menu.findItem(R.id.action_my716);
-        itemDonate = menu.findItem(R.id.action_donate);
+        this.menu = menu;
         upMenu();
         return super.onPrepareOptionsMenu(menu);
     }
@@ -182,12 +192,15 @@ public class SearchBookActivity extends MBaseActivity<SearchBookContract.Present
                 break;
             case R.id.action_my716:
                 useMy716 = !useMy716;
-                itemMy716.setChecked(useMy716);
+                upMenu();
                 mPresenter.setUseMy716(useMy716);
                 ACache.get(this).put("useMy716", useMy716 ? "True" : "False");
                 break;
             case R.id.action_donate:
                 DonateActivity.startThis(this);
+                break;
+            case R.id.action_get_hb:
+                DonateActivity.getZfbHb(this);
                 break;
             case android.R.id.home:
                 SoftInputUtil.hideIMM(this, getCurrentFocus());
@@ -202,14 +215,17 @@ public class SearchBookActivity extends MBaseActivity<SearchBookContract.Present
      */
     @Override
     public void upMenu() {
-        if (itemMy716 != null) {
-            itemMy716.setChecked(useMy716);
-            if (Objects.equals(ACache.get(this).getAsString("getZfbHb"), "True")) {
-                itemMy716.setVisible(true);
-                itemDonate.setVisible(false);
-            } else {
-                itemMy716.setVisible(false);
-                itemDonate.setVisible(true);
+        if (menu == null) return;
+        boolean getHb = Objects.equals(ACache.get(this).getAsString("getZfbHb"), "True");
+        for (int i = 0; i < menu.size(); i++) {
+            MenuItem item = menu.getItem(i);
+            if (item.getItemId() == R.id.action_my716) {
+                item.setChecked(useMy716);
+            }
+            if (item.getGroupId() == R.id.menu_jz) {
+                item.setVisible(!getHb);
+            } else if (item.getGroupId() == R.id.menu_yc_source) {
+                item.setVisible(getHb);
             }
         }
     }
@@ -251,10 +267,10 @@ public class SearchBookActivity extends MBaseActivity<SearchBookContract.Present
 
             @Override
             public boolean onQueryTextChange(String newText) {
-                if (!newText.toLowerCase().startsWith("set:")) {
+                if (!newText.toLowerCase().startsWith("set")) {
                     mPresenter.querySearchHistory(newText);
                 } else {
-
+                    showHideSetting();
                 }
                 return false;
             }
@@ -279,20 +295,6 @@ public class SearchBookActivity extends MBaseActivity<SearchBookContract.Present
                 explosionField.explode(tflSearchHistory.getChildAt(i));
             }
             mPresenter.cleanSearchHistory();
-        });
-
-        searchHistoryAdapter.setOnItemClickListener(new SearchHistoryAdapter.OnItemClickListener() {
-            @Override
-            public void itemClick(SearchHistoryBean searchHistoryBean) {
-                searchView.setQuery(searchHistoryBean.getContent(), true);
-                searchView.clearFocus();
-            }
-
-            @Override
-            public void itemLongClick(int index) {
-                explosionField.explode(tflSearchHistory.getChildAt(index));
-                mPresenter.cleanSearchHistory(searchHistoryAdapter.getItemData(index));
-            }
         });
 
         rfRvSearchBooks.setLoadMoreListener(new OnLoadMoreListener() {
@@ -341,8 +343,22 @@ public class SearchBookActivity extends MBaseActivity<SearchBookContract.Present
         openOrCloseHistory(showHistory);
     }
 
+    private void showHideSetting() {
+        tflSearchHistory.removeAllViews();
+        TextView tagView;
+        String hideSettings[] = {"show_nav_shelves", "fade_tts", "use_regex_in_new_rule", "blur_sim_back", "async_draw", "disable_scroll_click_turn"};
+
+        for (String text : hideSettings) {
+            tagView = (TextView) getLayoutInflater().inflate(R.layout.item_search_history, tflSearchHistory, false);
+            tagView.setTag(text);
+            tagView.setText(text);
+            tagView.setOnClickListener(hideSettingItemClick);
+            tflSearchHistory.addView(tagView);
+        }
+    }
+
     private void parseSecretCode(String code) {
-        code = code.toLowerCase().replaceAll("^set:", "").trim();
+        code = code.toLowerCase().replaceAll("^\\s*set:", "").trim();
         String[] param = code.split("\\s+");
         String msg = null;
         boolean enable = param.length == 1 || !param[1].equals("false");
@@ -364,9 +380,20 @@ public class SearchBookActivity extends MBaseActivity<SearchBookContract.Present
                 SharedPreferencesUtil.saveData("blurSimBack", enable);
                 msg = "已" + (enable ? "启" : "禁") + "用仿真翻页背景虚化！";
                 break;
+            case "async_draw":
+                SharedPreferencesUtil.saveData("asyncDraw", enable);
+                msg = "已" + (enable ? "启" : "禁") + "用异步加载！";
+                break;
+            case "disable_scroll_click_turn":
+                SharedPreferencesUtil.saveData("disableScrollClickTurn", enable);
+                msg = "已" + (enable ? "禁" : "启") + "用滚动模式点击翻页！";
+                break;
         }
-        if (msg != null)
-            toast(msg);
+        if (msg == null) {
+            toast("无法识别设置密码: " + code, 0, -1);
+        } else {
+            toast(msg, 0, 1);
+        }
     }
 
     /**
@@ -374,7 +401,6 @@ public class SearchBookActivity extends MBaseActivity<SearchBookContract.Present
      */
     private void toSearch() {
         if (!TextUtils.isEmpty(searchKey)) {
-            mPresenter.setHasSearch(true);
             mPresenter.insertSearchHistory();
             //执行搜索请求
             new Handler().postDelayed(() -> {
@@ -398,6 +424,21 @@ public class SearchBookActivity extends MBaseActivity<SearchBookContract.Present
         }
     }
 
+    private void addNewHistories(List<SearchHistoryBean> historyBeans) {
+        tflSearchHistory.removeAllViews();
+        if (historyBeans != null) {
+            TextView tagView;
+            for (SearchHistoryBean searchHistoryBean : historyBeans) {
+                tagView = (TextView) getLayoutInflater().inflate(R.layout.item_search_history, tflSearchHistory, false);
+                tagView.setTag(searchHistoryBean);
+                tagView.setText(searchHistoryBean.getContent());
+                tagView.setOnClickListener(historyItemClick);
+                tagView.setOnLongClickListener(historyItemLongClick);
+                tflSearchHistory.addView(tagView);
+            }
+        }
+    }
+
     @Override
     public void insertSearchHistorySuccess(SearchHistoryBean searchHistoryBean) {
         //搜索历史插入或者修改成功
@@ -406,8 +447,8 @@ public class SearchBookActivity extends MBaseActivity<SearchBookContract.Present
 
     @Override
     public void querySearchHistorySuccess(List<SearchHistoryBean> datas) {
-        searchHistoryAdapter.replaceAll(datas);
-        if (searchHistoryAdapter.getDataSize() > 0) {
+        addNewHistories(datas);
+        if (tflSearchHistory.getChildCount() > 0) {
             tvSearchHistoryClean.setVisibility(View.VISIBLE);
         } else {
             tvSearchHistoryClean.setVisibility(View.INVISIBLE);
@@ -447,8 +488,9 @@ public class SearchBookActivity extends MBaseActivity<SearchBookContract.Present
 
     @Override
     protected void onDestroy() {
-        super.onDestroy();
+        mPresenter.stopSearch();
         explosionField.clear();
+        super.onDestroy();
     }
 
     @Override
@@ -457,46 +499,8 @@ public class SearchBookActivity extends MBaseActivity<SearchBookContract.Present
     }
 
     @Override
-    public void addBookShelfFailed(String message) {
-        toast(message);
-    }
-
-    @Override
     public SearchBookAdapter getSearchBookAdapter() {
         return searchBookAdapter;
-    }
-
-    @Override
-    public void updateSearchItem(int index) {
-        if (index < searchBookAdapter.getICount()) {
-            int startIndex = ((LinearLayoutManager) rfRvSearchBooks.getRecyclerView().getLayoutManager()).findFirstVisibleItemPosition();
-            try {
-                TextView tvAddShelf = rfRvSearchBooks.getRecyclerView().getChildAt(index - startIndex).findViewById(R.id.tv_add_shelf);
-                if (tvAddShelf != null) {
-                    if (searchBookAdapter.getSearchBooks().get(index).getIsAdd()) {
-                        tvAddShelf.setText("已添加");
-                        tvAddShelf.setEnabled(false);
-                    } else {
-                        tvAddShelf.setText("+添加");
-                        tvAddShelf.setEnabled(true);
-                    }
-                }
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        }
-    }
-
-    @Override
-    public Boolean checkIsExist(SearchBookBean searchBookBean) {
-        Boolean result = false;
-        for (int i = 0; i < searchBookAdapter.getICount(); i++) {
-            if (searchBookAdapter.getSearchBooks().get(i).getNoteUrl().equals(searchBookBean.getNoteUrl()) && searchBookAdapter.getSearchBooks().get(i).getTag().equals(searchBookBean.getTag())) {
-                result = true;
-                break;
-            }
-        }
-        return result;
     }
 
     @Override

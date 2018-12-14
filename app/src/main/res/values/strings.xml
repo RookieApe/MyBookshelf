@@ -24,13 +24,14 @@
     <string name="navigation_drawer_close">关闭侧边栏</string>
 
     <string name="local">本地</string>
+    <string name="search">搜索</string>
     <string name="net_error_10001">没有网络</string>
     <string name="net_error_10002">网络连接超时</string>
     <string name="net_error_10003">数据解析失败</string>
     <string name="origin_format">来源: %s</string>
-    <string name="read_dur_progress">最近阅读: %s</string>
+    <string name="read_dur_progress">最近: %s</string>
     <string name="tv_book_name">《%s》</string>
-    <string name="book_search_last">最新章节: %s</string>
+    <string name="book_search_last">最新: %s</string>
     <string name="check_add_bookshelf">是否将《%s》放入书架？</string>
     <string name="import_books_count">共%s个Text文件</string>
     <string name="is_loading">加载中…</string>
@@ -117,6 +118,7 @@
     <string name="scan_image">扫描本地图片</string>
     <string name="rule_summary">规则说明</string>
     <string name="share">分享</string>
+    <string name="share_app">软件分享</string>
     <string name="flow_sys">跟随系统</string>
     <string name="add">添加</string>
     <string name="import_book_source">导入书源</string>
@@ -164,8 +166,6 @@
     <string name="bookshelf_px_1">按更新时间排序</string>
     <string name="bookshelf_px_2">手动排序</string>
     <string name="read_type">阅读方式</string>
-    <string name="horizontal_page_turning">水平翻页</string>
-    <string name="vertical_scroll">垂直滚动</string>
     <string name="del_select">删除所选</string>
     <string name="clear_font">默认字体</string>
     <string name="find_on_www">发现</string>
@@ -188,8 +188,6 @@
     <string name="immersion_status_bar">沉浸式状态栏</string>
     <string name="un_download">还剩%d章未下载</string>
     <string name="long_click_input_color">长按输入颜色值</string>
-    <string name="s_bookshelf_anim">打开书架时显示动画</string>
-    <string name="t_bookshelf_anim">书架动画</string>
     <string name="loading">加载中…</string>
     <string name="group_zg">追更区</string>
     <string name="group_yf">养肥区</string>
@@ -220,6 +218,7 @@
     <string name="check_book_source">校验书源</string>
     <string name="progress_show">进度 %d/%d</string>
     <string name="tts_fix">请安装并选择中文TTS!</string>
+    <string name="tts_init_failed">TTS初始化失败!</string>
     <string name="jf_convert">简繁转换</string>
     <string name="jf_convert_o">关闭</string>
     <string name="jf_convert_f">简转繁</string>
@@ -267,5 +266,24 @@
     <string name="update_chapter">更新目录</string>
     <string name="txt_chapter_regex">目录正则</string>
     <string name="set_charset">设置编码</string>
+    <string name="swap_sort">倒序-顺序</string>
+    <string name="sort">排序</string>
+    <string name="sort_auto">智能排序</string>
+    <string name="sort_manual">手动排序</string>
+    <string name="sort_pin_yin">拼音排序</string>
+    <string name="read_y">已读: %s</string>
+    <string name="pursue_more">追更</string>
+    <string name="fattening">养肥</string>
+    <string name="finish">完结</string>
+    <string name="all_book">所有书籍</string>
+    <string name="pursue_more_book">追更书籍</string>
+    <string name="fattening_book">养肥书籍</string>
+    <string name="finish_book">完结书籍</string>
+    <string name="local_book">本地书籍</string>
+    <string name="status_bar_immersion">状态栏颜色透明</string>
+    <string name="navigation_bar_color_change">导航栏变色</string>
+    <string name="navigation_bar_color_change_s">导航栏根据夜间模式变化</string>
+    <string name="add_to_shelf">放入书架</string>
+    <string name="continue_read">继续阅读</string>
 
 </resources>

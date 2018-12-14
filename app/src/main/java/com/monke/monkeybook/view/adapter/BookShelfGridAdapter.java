@@ -4,29 +4,27 @@ package com.monke.monkeybook.view.adapter;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.graphics.BitmapFactory;
-import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.view.animation.Animation;
-import android.view.animation.AnimationUtils;
-import android.widget.ImageButton;
+import android.widget.FrameLayout;
 import android.widget.ImageView;
-import android.widget.RelativeLayout;
+import android.widget.TextView;
 
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.request.RequestOptions;
 import com.monke.monkeybook.R;
+import com.monke.monkeybook.bean.BookInfoBean;
 import com.monke.monkeybook.bean.BookShelfBean;
 import com.monke.monkeybook.dao.DbHelper;
 import com.monke.monkeybook.help.BookshelfHelp;
 import com.monke.monkeybook.help.MyItemTouchHelpCallback;
 import com.monke.monkeybook.view.adapter.base.OnItemClickListenerTwo;
-import com.monke.mprogressbar.MHorProgressBar;
+import com.monke.monkeybook.widget.BadgeView;
 import com.victor.loading.rotate.RotateLoading;
 
 import java.util.ArrayList;
@@ -34,13 +32,9 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import me.grantland.widget.AutofitTextView;
-
-public class BookShelfGridAdapter extends RecyclerView.Adapter<BookShelfGridAdapter.MyViewHolder> {
+public class BookShelfGridAdapter extends RecyclerView.Adapter<BookShelfGridAdapter.MyViewHolder> implements BookShelfAdapter {
 
     private List<BookShelfBean> books;
-
-    private Boolean needAnim;
     private OnItemClickListenerTwo itemClickListener;
     private String bookshelfPx;
     private Activity activity;
@@ -66,16 +60,17 @@ public class BookShelfGridAdapter extends RecyclerView.Adapter<BookShelfGridAdap
         }
     };
 
-    public BookShelfGridAdapter(Activity activity, Boolean needAnim) {
+    public BookShelfGridAdapter(Activity activity) {
         this.activity = activity;
-        this.needAnim = needAnim;
         books = new ArrayList<>();
     }
 
+    @Override
     public MyItemTouchHelpCallback.OnItemTouchCallbackListener getItemTouchCallbackListener() {
         return itemTouchCallbackListener;
     }
 
+    @Override
     public void refreshBook(String noteUrl) {
         for (int i = 0; i < books.size(); i++) {
             if (Objects.equals(books.get(i).getNoteUrl(), noteUrl)) {
@@ -98,48 +93,26 @@ public class BookShelfGridAdapter extends RecyclerView.Adapter<BookShelfGridAdap
 
     @Override
     public void onBindViewHolder(@NonNull MyViewHolder holder, @SuppressLint("RecyclerView") int index) {
-        if (needAnim) {
-            final Animation animation = AnimationUtils.loadAnimation(holder.flContent.getContext(), R.anim.anim_bookshelf_item);
-            animation.setAnimationListener(new AnimationStartListener() {
-                @Override
-                void onAnimStart(Animation animation) {
-                    needAnim = false;
-                    holder.flContent.setVisibility(View.VISIBLE);
-                }
-            });
-            long DUR_ANIM_ITEM = 30;
-            new Handler().postDelayed(() -> holder.flContent.startAnimation(animation), index * DUR_ANIM_ITEM);
-        } else {
-            holder.flContent.setVisibility(View.VISIBLE);
-        }
-
-        holder.tvName.setText(books.get(index).getBookInfoBean().getName());
-        holder.mpbDurProgress.setVisibility(View.VISIBLE);
-        holder.mpbDurProgress.setMaxProgress(books.get(index).getChapterListSize());
-        holder.mpbDurProgress.setDurProgress(books.get(index).getDurChapter() + 1);
-        holder.ibContent.setContentDescription(books.get(index).getBookInfoBean().getName());
+        BookShelfBean bookShelfBean = books.get(index);
+        BookInfoBean bookInfoBean = bookShelfBean.getBookInfoBean();
+        holder.tvName.setText(bookInfoBean.getName());
         if (!activity.isFinishing()) {
-            if (TextUtils.isEmpty(books.get(index).getCustomCoverPath())) {
-                Glide.with(activity).load(books.get(index).getBookInfoBean().getCoverUrl())
+            if (TextUtils.isEmpty(bookShelfBean.getCustomCoverPath())) {
+                Glide.with(activity).load(bookInfoBean.getCoverUrl())
                         .apply(new RequestOptions().dontAnimate().diskCacheStrategy(DiskCacheStrategy.RESOURCE)
                                 .centerCrop().placeholder(R.drawable.img_cover_default))
                         .into(holder.ivCover);
-            } else if (books.get(index).getCustomCoverPath().startsWith("http")) {
-                Glide.with(activity).load(books.get(index).getCustomCoverPath())
+            } else if (bookShelfBean.getCustomCoverPath().startsWith("http")) {
+                Glide.with(activity).load(bookShelfBean.getCustomCoverPath())
                         .apply(new RequestOptions().dontAnimate().diskCacheStrategy(DiskCacheStrategy.RESOURCE)
                                 .centerCrop().placeholder(R.drawable.img_cover_default))
                         .into(holder.ivCover);
             } else {
-                holder.ivCover.setImageBitmap(BitmapFactory.decodeFile(books.get(index).getCustomCoverPath()));
+                holder.ivCover.setImageBitmap(BitmapFactory.decodeFile(bookShelfBean.getCustomCoverPath()));
             }
         }
-        if (books.get(index).getHasUpdate()) {
-            holder.ivHasNew.setVisibility(View.VISIBLE);
-        } else {
-            holder.ivHasNew.setVisibility(View.INVISIBLE);
-        }
 
-        holder.ibContent.setOnClickListener(v -> {
+        holder.flContent.setOnClickListener(v -> {
             if (itemClickListener != null)
                 itemClickListener.onClick(v, index);
         });
@@ -149,33 +122,38 @@ public class BookShelfGridAdapter extends RecyclerView.Adapter<BookShelfGridAdap
             }
         });
         if (!Objects.equals(bookshelfPx, "2")) {
-            holder.ibContent.setOnLongClickListener(v -> {
+            holder.flContent.setOnLongClickListener(v -> {
                 if (itemClickListener != null) {
                     itemClickListener.onLongClick(v, index);
                 }
                 return true;
             });
-        } else if (books.get(index).getSerialNumber() != index) {
-            books.get(index).setSerialNumber(index);
+        } else if (bookShelfBean.getSerialNumber() != index) {
+            bookShelfBean.setSerialNumber(index);
             new Thread() {
                 public void run() {
-                    DbHelper.getInstance().getmDaoSession().getBookShelfBeanDao().insertOrReplace(books.get(index));
+                    DbHelper.getInstance().getmDaoSession().getBookShelfBeanDao().insertOrReplace(bookShelfBean);
                 }
             }.start();
         }
-        if (books.get(index).isLoading()) {
+        if (bookShelfBean.isLoading()) {
+            holder.bvUnread.setVisibility(View.INVISIBLE);
             holder.rotateLoading.setVisibility(View.VISIBLE);
             holder.rotateLoading.start();
         } else {
+            holder.bvUnread.setBadgeCount(bookShelfBean.getUnreadChapterNum());
+            holder.bvUnread.setHighlight(bookShelfBean.getHasUpdate());
             holder.rotateLoading.setVisibility(View.INVISIBLE);
             holder.rotateLoading.stop();
         }
     }
 
+    @Override
     public void setItemClickListener(OnItemClickListenerTwo itemClickListener) {
         this.itemClickListener = itemClickListener;
     }
 
+    @Override
     public synchronized void replaceAll(List<BookShelfBean> newDataS, String bookshelfPx) {
         this.bookshelfPx = bookshelfPx;
         if (null != newDataS && newDataS.size() > 0) {
@@ -187,48 +165,25 @@ public class BookShelfGridAdapter extends RecyclerView.Adapter<BookShelfGridAdap
         notifyDataSetChanged();
     }
 
+    @Override
     public List<BookShelfBean> getBooks() {
         return books;
     }
 
     class MyViewHolder extends RecyclerView.ViewHolder {
-        RelativeLayout flContent;
+        FrameLayout flContent;
         ImageView ivCover;
-        ImageView ivHasNew;
-        AutofitTextView tvName;
-        ImageButton ibContent;
+        TextView tvName;
+        BadgeView bvUnread;
         RotateLoading rotateLoading;
-        MHorProgressBar mpbDurProgress;
 
         MyViewHolder(View itemView) {
             super(itemView);
             flContent = itemView.findViewById(R.id.fl_content);
             ivCover = itemView.findViewById(R.id.iv_cover);
-            ivHasNew = itemView.findViewById(R.id.iv_has_new);
             tvName = itemView.findViewById(R.id.tv_name);
-            ibContent = itemView.findViewById(R.id.ib_content);
+            bvUnread = itemView.findViewById(R.id.bv_unread);
             rotateLoading = itemView.findViewById(R.id.rl_loading);
-            mpbDurProgress = itemView.findViewById(R.id.mpb_durProgress);
         }
-    }
-
-    abstract class AnimationStartListener implements Animation.AnimationListener {
-
-        @Override
-        public void onAnimationStart(Animation animation) {
-            onAnimStart(animation);
-        }
-
-        @Override
-        public void onAnimationEnd(Animation animation) {
-
-        }
-
-        @Override
-        public void onAnimationRepeat(Animation animation) {
-
-        }
-
-        abstract void onAnimStart(Animation animation);
     }
 }

@@ -4,6 +4,8 @@ package com.monke.monkeybook.base;
 import android.annotation.SuppressLint;
 import android.content.SharedPreferences;
 import android.content.pm.ActivityInfo;
+import android.content.res.Configuration;
+import android.graphics.Color;
 import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
@@ -13,7 +15,6 @@ import android.support.v7.app.AppCompatDelegate;
 import android.util.Log;
 import android.view.Menu;
 import android.view.View;
-import android.widget.Toast;
 
 import com.monke.basemvplib.BaseActivity;
 import com.monke.basemvplib.impl.IPresenter;
@@ -24,8 +25,6 @@ import com.monke.monkeybook.utils.barUtil.ImmersionBar;
 import java.lang.reflect.Method;
 
 public abstract class MBaseActivity<T extends IPresenter> extends BaseActivity<T> {
-    public static final int SUCCESS = 1;
-    public static final int ERROR = -1;
     public final SharedPreferences preferences = MApplication.getInstance().getConfigPreferences();
     protected ImmersionBar mImmersionBar;
     private Snackbar snackbar;
@@ -42,12 +41,16 @@ public abstract class MBaseActivity<T extends IPresenter> extends BaseActivity<T
     }
 
     @Override
+    public void onConfigurationChanged(Configuration newConfig) {
+        super.onConfigurationChanged(newConfig);
+        // 如果你的app可以横竖屏切换，并且适配4.4或者emui3手机请务必在onConfigurationChanged方法里添加这句话
+        ImmersionBar.with(this).init();
+    }
+
+    @Override
     protected void onDestroy() {
         super.onDestroy();
-        if (mImmersionBar != null) {
-            mImmersionBar.destroy();  //在BaseActivity里销毁}
-        }
-
+        ImmersionBar.with(this).destroy();
     }
 
     @Override
@@ -125,6 +128,10 @@ public abstract class MBaseActivity<T extends IPresenter> extends BaseActivity<T
                     mImmersionBar.navigationBarDarkFont(true);
                 }
             }
+            if (!preferences.getBoolean("navigationBarColorChange", false)) {
+                mImmersionBar.navigationBarColor(R.color.black);
+                mImmersionBar.navigationBarDarkFont(false);
+            }
             mImmersionBar.init();
         } catch (Exception e) {
             Log.e("MonkBook", e.getLocalizedMessage());
@@ -177,31 +184,6 @@ public abstract class MBaseActivity<T extends IPresenter> extends BaseActivity<T
         }
     }
 
-    public void toast(String msg) {
-        toast(msg, Toast.LENGTH_SHORT, 0);
-    }
-
-    public void toast(String msg, int state) {
-        toast(msg, Toast.LENGTH_LONG, state);
-    }
-
-    public void toast(int strId) {
-        toast(strId, 0);
-    }
-
-    public void toast(int strId, int state) {
-        toast(getString(strId), Toast.LENGTH_LONG, state);
-    }
-
-    public void toast(String msg, int length, int state) {
-        Toast toast = Toast.makeText(this, msg, length);
-        if (state == SUCCESS) {
-            toast.getView().getBackground().setColorFilter(getResources().getColor(R.color.success), PorterDuff.Mode.SRC_IN);
-        } else if (state == ERROR) {
-            toast.getView().getBackground().setColorFilter(getResources().getColor(R.color.error), PorterDuff.Mode.SRC_IN);
-        }
-        toast.show();
-    }
 
     public void showSnackBar(String msg) {
         showSnackBar(getCurrentFocus(), msg);

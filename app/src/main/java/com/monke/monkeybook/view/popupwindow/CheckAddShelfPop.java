@@ -21,14 +21,13 @@ public class CheckAddShelfPop extends PopupWindow {
         mContext = context;
         this.bookName = bookName;
         this.itemClick = itemClick;
-        view = LayoutInflater.from(mContext).inflate(R.layout.moprogress_dialog_two, null);
+        view = LayoutInflater.from(mContext).inflate(R.layout.mo_dialog_two, null);
         this.setContentView(view);
 
         initView();
         setBackgroundDrawable(mContext.getResources().getDrawable(R.drawable.shape_pop_checkaddshelf_bg));
         setFocusable(true);
         setTouchable(true);
-        setAnimationStyle(R.style.anim_pop_checkaddshelf);
     }
 
     private void initView() {

@@ -4,7 +4,7 @@ import android.content.ClipData;
 import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.Intent;
-import android.graphics.PorterDuff;
+import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
 import android.support.v7.app.ActionBar;
@@ -15,12 +15,21 @@ import android.view.MenuItem;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.EncodeHintType;
+import com.google.zxing.MultiFormatWriter;
+import com.google.zxing.WriterException;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
+import com.journeyapps.barcodescanner.BarcodeEncoder;
 import com.monke.basemvplib.impl.IPresenter;
 import com.monke.monkeybook.MApplication;
 import com.monke.monkeybook.R;
 import com.monke.monkeybook.base.MBaseActivity;
 import com.monke.monkeybook.help.UpdateManager;
-import com.monke.monkeybook.widget.modialog.MoProgressHUD;
+import com.monke.monkeybook.widget.modialog.MoDialogHUD;
+
+import java.util.Hashtable;
 
 import butterknife.BindView;
 import butterknife.ButterKnife;
@@ -81,8 +90,12 @@ public class AboutActivity extends MBaseActivity {
     TextView tvFaq;
     @BindView(R.id.vw_faq)
     CardView vwFaq;
+    @BindView(R.id.tv_share)
+    TextView tvShare;
+    @BindView(R.id.vw_share)
+    CardView vwShare;
 
-    private MoProgressHUD moProgressHUD;
+    private MoDialogHUD moDialogHUD;
     private String qq = "701903217 788025059";
 
     public static void startThis(Context context) {
@@ -107,7 +120,7 @@ public class AboutActivity extends MBaseActivity {
 
     @Override
     protected void initData() {
-        moProgressHUD = new MoProgressHUD(this);
+        moDialogHUD = new MoDialogHUD(this);
     }
 
     @Override
@@ -117,22 +130,6 @@ public class AboutActivity extends MBaseActivity {
         setupActionBar();
         tvVersion.setText(getString(R.string.version_name, MApplication.getVersionName()));
         tvQq.setText(getString(R.string.qq_group, qq));
-
-        setTextViewIconColor(tvDisclaimer);
-        setTextViewIconColor(tvGit);
-        setTextViewIconColor(tvDonate);
-        setTextViewIconColor(tvHomePage);
-        setTextViewIconColor(tvMail);
-        setTextViewIconColor(tvQq);
-        setTextViewIconColor(tvScoring);
-        setTextViewIconColor(tvUpdate);
-        setTextViewIconColor(tvUpdateLog);
-        setTextViewIconColor(tvVersion);
-        setTextViewIconColor(tvFaq);
-    }
-
-    private void setTextViewIconColor(TextView textView) {
-        textView.getCompoundDrawablesRelative()[0].setColorFilter(getResources().getColor(R.color.tv_text_default), PorterDuff.Mode.SRC_ATOP);
     }
 
     @Override
@@ -141,7 +138,7 @@ public class AboutActivity extends MBaseActivity {
         vwScoring.setOnClickListener(view -> openIntent(Intent.ACTION_VIEW, "market://details?id=" + getPackageName()));
         vwMail.setOnClickListener(view -> openIntent(Intent.ACTION_SENDTO, "mailto:kunfei.ge@gmail.com"));
         vwGit.setOnClickListener(view -> openIntent(Intent.ACTION_VIEW, getString(R.string.this_github_url)));
-        vwDisclaimer.setOnClickListener(view -> moProgressHUD.showAssetMarkdown("disclaimer.md"));
+        vwDisclaimer.setOnClickListener(view -> moDialogHUD.showAssetMarkdown("disclaimer.md"));
         vwUpdate.setOnClickListener(view -> UpdateManager.getInstance(this).checkUpdate(true));
         vwHomePage.setOnClickListener(view -> openIntent(Intent.ACTION_VIEW, getString(R.string.home_page_url)));
         vwQq.setOnClickListener(view -> {
@@ -152,8 +149,15 @@ public class AboutActivity extends MBaseActivity {
                 toast(R.string.copy_complete);
             }
         });
-        vwUpdateLog.setOnClickListener(view -> moProgressHUD.showAssetMarkdown("updateLog.md"));
-        vwFaq.setOnClickListener(view -> moProgressHUD.showAssetMarkdown("faq.md"));
+        vwUpdateLog.setOnClickListener(view -> moDialogHUD.showAssetMarkdown("updateLog.md"));
+        vwFaq.setOnClickListener(view -> moDialogHUD.showAssetMarkdown("faq.md"));
+        vwShare.setOnClickListener(view -> {
+            String url = "https://www.coolapk.com/apk/com.gedoor.monkeybook";
+            Bitmap bitmap = encodeAsBitmap(url);
+            if (bitmap != null) {
+                moDialogHUD.showImageText(bitmap, url);
+            }
+        });
     }
 
     @Override
@@ -195,7 +199,26 @@ public class AboutActivity extends MBaseActivity {
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        Boolean mo = moProgressHUD.onKeyDown(keyCode, event);
+        Boolean mo = moDialogHUD.onKeyDown(keyCode, event);
         return mo || super.onKeyDown(keyCode, event);
+    }
+
+    public Bitmap encodeAsBitmap(String str) {
+        Bitmap bitmap = null;
+        BitMatrix result;
+        MultiFormatWriter multiFormatWriter = new MultiFormatWriter();
+        try {
+            Hashtable<EncodeHintType, Object> hst = new Hashtable();
+            hst.put(EncodeHintType.CHARACTER_SET, "UTF-8");
+            hst.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.H);
+            result = multiFormatWriter.encode(str, BarcodeFormat.QR_CODE, 600, 600, hst);
+            BarcodeEncoder barcodeEncoder = new BarcodeEncoder();
+            bitmap = barcodeEncoder.createBitmap(result);
+        } catch (WriterException e) {
+            e.printStackTrace();
+        } catch (IllegalArgumentException iae) { // ?
+            return null;
+        }
+        return bitmap;
     }
 }

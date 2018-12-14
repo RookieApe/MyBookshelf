@@ -8,6 +8,7 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Objects;
 
 public class CharsetDetector {
 
@@ -91,17 +92,19 @@ public class CharsetDetector {
             e.printStackTrace();
         }
 
-        if (isAscii) {
-            found = true;
-            return "ascii";
+        if (found) {
+            return foundCharset;
         }
 
-        if (!found) {
-            String prob[] = detector.getProbableCharsets();
-            foundCharset = prob[0];
+        if (isAscii) {
+            return "UTF-8";
         }
-        found = false;
-        return foundCharset;
+
+        String prob[] = detector.getProbableCharsets();
+        if (prob.length > 0 && !Objects.equals(prob[0], "nomatch")) {
+            return prob[0];
+        }
+        return DEFAULT_CHARSET;
     }
 
 }

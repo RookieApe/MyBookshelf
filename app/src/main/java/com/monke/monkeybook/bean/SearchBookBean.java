@@ -12,6 +12,9 @@ import org.greenrobot.greendao.annotation.Generated;
 import org.greenrobot.greendao.annotation.Id;
 import org.greenrobot.greendao.annotation.Transient;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 public class SearchBookBean implements Parcelable{
     @Id
@@ -27,12 +30,13 @@ public class SearchBookBean implements Parcelable{
     private String introduce; //简介
     private String chapterUrl;//目录URL
     private Long addTime = 0L;
+    private Long upTime = 0L;
     @Transient
     private long words;
     @Transient
     private String state;
     @Transient
-    private Boolean isAdd = false;
+    private Boolean isCurrentSource = false;
     @Transient
     private int originNum = 1;
     @Transient
@@ -41,6 +45,8 @@ public class SearchBookBean implements Parcelable{
     private int lastChapterNum = -2;
     @Transient
     private int searchTime = Integer.MAX_VALUE;
+    @Transient
+    private List<String> originUrls;
 
     public SearchBookBean(){
 
@@ -54,7 +60,7 @@ public class SearchBookBean implements Parcelable{
         words = in.readLong();
         state = in.readString();
         lastChapter = in.readString();
-        isAdd = in.readByte() != 0;
+        isCurrentSource = in.readByte() != 0;
         tag = in.readString();
         kind = in.readString();
         origin = in.readString();
@@ -63,12 +69,14 @@ public class SearchBookBean implements Parcelable{
         introduce = in.readString();
         chapterUrl = in.readString();
         addTime = in.readLong();
+        upTime = in.readLong();
+        originUrls = in.createStringArrayList();
     }
 
-    @Generated(hash = 1805065778)
+    @Generated(hash = 1330499490)
     public SearchBookBean(String noteUrl, String coverUrl, String name, String author,
             String tag, String kind, String origin, String desc, String lastChapter,
-            String introduce, String chapterUrl, Long addTime) {
+            String introduce, String chapterUrl, Long addTime, Long upTime) {
         this.noteUrl = noteUrl;
         this.coverUrl = coverUrl;
         this.name = name;
@@ -81,6 +89,7 @@ public class SearchBookBean implements Parcelable{
         this.introduce = introduce;
         this.chapterUrl = chapterUrl;
         this.addTime = addTime;
+        this.upTime = upTime;
     }
 
     @Override
@@ -92,7 +101,7 @@ public class SearchBookBean implements Parcelable{
         dest.writeLong(words);
         dest.writeString(state);
         dest.writeString(lastChapter);
-        dest.writeByte((byte)(isAdd?1:0));
+        dest.writeByte((byte)(isCurrentSource ?1:0));
         dest.writeString(tag);
         dest.writeString(kind);
         dest.writeString(origin);
@@ -101,6 +110,8 @@ public class SearchBookBean implements Parcelable{
         dest.writeString(introduce);
         dest.writeString(chapterUrl);
         dest.writeLong(addTime);
+        dest.writeLong(upTime);
+        dest.writeStringList(originUrls);
     }
 
     @Override
@@ -215,13 +226,13 @@ public class SearchBookBean implements Parcelable{
         this.desc = desc;
     }
 
-    public Boolean getIsAdd() {
-        return this.isAdd;
+    public Boolean getIsCurrentSource() {
+        return this.isCurrentSource;
     }
 
-    public void setIsAdd(Boolean isAdd) {
-        this.isAdd = isAdd;
-        if(isAdd)
+    public void setIsCurrentSource(Boolean isCurrentSource) {
+        this.isCurrentSource = isCurrentSource;
+        if (isCurrentSource)
             this.addTime = System.currentTimeMillis();
     }
 
@@ -231,6 +242,21 @@ public class SearchBookBean implements Parcelable{
 
     public int getOriginNum() {
         return originNum;
+    }
+
+    public void addOriginUrl(String origin) {
+        if (this.originUrls == null) {
+            this.originUrls = new ArrayList<>();
+        }
+
+        if (!this.originUrls.contains(origin)) {
+            this.originUrls.add(origin);
+        }
+        originNum = this.originUrls.size();
+    }
+
+    public List<String> getOriginUrls() {
+        return this.originUrls == null ? new ArrayList<String>() : this.originUrls;
     }
 
     public String getIntroduce() {
@@ -282,5 +308,13 @@ public class SearchBookBean implements Parcelable{
 
     public void setSearchTime(int searchTime) {
         this.searchTime = searchTime;
+    }
+
+    public Long getUpTime() {
+        return this.upTime;
+    }
+
+    public void setUpTime(Long upTime) {
+        this.upTime = upTime;
     }
 }

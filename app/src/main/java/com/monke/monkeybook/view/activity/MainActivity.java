@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.res.ColorStateList;
 import android.content.res.Configuration;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
 import android.support.annotation.NonNull;
@@ -26,8 +27,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.view.View;
-import android.view.ViewGroup;
-import android.view.ViewParent;
 import android.widget.ImageView;
 import android.widget.PopupMenu;
 import android.widget.Switch;
@@ -38,15 +37,18 @@ import com.monke.monkeybook.MApplication;
 import com.monke.monkeybook.R;
 import com.monke.monkeybook.base.BaseTabActivity;
 import com.monke.monkeybook.help.BookshelfHelp;
+import com.monke.monkeybook.help.ChapterContentHelp;
 import com.monke.monkeybook.help.DataBackup;
 import com.monke.monkeybook.help.LauncherIcon;
+import com.monke.monkeybook.help.ReadBookControl;
 import com.monke.monkeybook.help.RxBusTag;
 import com.monke.monkeybook.model.BookSourceManager;
-import com.monke.monkeybook.presenter.MainPresenterImpl;
+import com.monke.monkeybook.model.UpLastChapterModel;
+import com.monke.monkeybook.presenter.MainPresenter;
 import com.monke.monkeybook.presenter.contract.MainContract;
 import com.monke.monkeybook.view.fragment.BookListFragment;
 import com.monke.monkeybook.view.fragment.FindBookFragment;
-import com.monke.monkeybook.widget.modialog.MoProgressHUD;
+import com.monke.monkeybook.widget.modialog.MoDialogHUD;
 
 import java.util.Arrays;
 import java.util.List;
@@ -57,7 +59,6 @@ import butterknife.ButterKnife;
 import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
 
-import static com.monke.monkeybook.help.Constant.BOOK_GROUPS;
 import static com.monke.monkeybook.utils.NetworkUtil.isNetWorkAvailable;
 
 public class MainActivity extends BaseTabActivity<MainContract.Presenter> implements MainContract.View, BookListFragment.CallBackValue {
@@ -81,13 +82,14 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
     private int group;
     private boolean viewIsList;
     private ActionBarDrawerToggle mDrawerToggle;
-    private MoProgressHUD moProgressHUD;
+    private MoDialogHUD moDialogHUD;
     private long exitTime = 0;
     private boolean resumed = false;
+    private Handler handler = new Handler();
 
     @Override
     protected MainContract.Presenter initInjector() {
-        return new MainPresenterImpl();
+        return new MainPresenter();
     }
 
     @Override
@@ -160,7 +162,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
         initDrawer();
         initTabLayout();
         upGroup(group);
-        moProgressHUD = new MoProgressHUD(this);
+        moDialogHUD = new MoDialogHUD(this);
 
         //点击跳转搜索页
         cardSearch.setOnClickListener(view -> startActivityByAnim(new Intent(this, SearchBookActivity.class),
@@ -173,17 +175,19 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
         for (int i = 0; i < mTlIndicator.getTabCount(); i++) {
             TabLayout.Tab tab = mTlIndicator.getTabAt(i);
             if (tab == null) return;
-            tab.setCustomView(tab_icon(mTitles[i], null));
-            if (tab.getCustomView() == null) return;
-            View tabView = (View) tab.getCustomView().getParent();
-            tabView.setTag(i);
-            //设置第一个Item的点击事件(当下标为0时触发)
-            if (i == 0) {
+            if (i == 0) { //设置第一个Item的点击事件(当下标为0时触发)
+                tab.setCustomView(tab_icon(mTitles[i], R.drawable.ic_arrow_drop_down_black_24dp));
+                View tabView = (View) Objects.requireNonNull(tab.getCustomView()).getParent();
+                tabView.setTag(i);
                 tabView.setOnClickListener(view -> {
                     if (tabView.isSelected()) {
                         showBookGroupMenu(view);
                     }
                 });
+            } else {
+                tab.setCustomView(tab_icon(mTitles[i], null));
+                View tabView = (View) Objects.requireNonNull(tab.getCustomView()).getParent();
+                tabView.setTag(i);
             }
         }
     }
@@ -193,28 +197,38 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
      */
     private void showBookGroupMenu(View view) {
         PopupMenu popupMenu = new PopupMenu(this, view);
-        for (int j = 0; j < BOOK_GROUPS.length; j++) {
-            popupMenu.getMenu().add(0, 0, j, BOOK_GROUPS[j]);
+        for (int j = 0; j < getResources().getStringArray(R.array.book_group_array).length; j++) {
+            popupMenu.getMenu().add(0, 0, j, getResources().getStringArray(R.array.book_group_array)[j]);
         }
         popupMenu.setOnMenuItemClickListener(menuItem -> {
             upGroup(menuItem.getOrder());
             return true;
         });
+        popupMenu.setOnDismissListener(popupMenu1 -> updateTabItemIcon(false));
         popupMenu.show();
+        updateTabItemIcon(true);
+    }
+
+    private void updateTabItemIcon(boolean showMenu) {
+        TabLayout.Tab tab = mTlIndicator.getTabAt(0);
+        if (tab == null) return;
+        View customView = tab.getCustomView();
+        if (customView == null) return;
+        ImageView im = customView.findViewById(R.id.tabicon);
+        if (showMenu) {
+            im.setImageResource(R.drawable.ic_arrow_drop_up_black_24dp);
+        } else {
+            im.setImageResource(R.drawable.ic_arrow_drop_down_black_24dp);
+        }
     }
 
     private void updateTabItemText(int group) {
         TabLayout.Tab tab = mTlIndicator.getTabAt(0);
-        //首先移除原先View
         if (tab == null) return;
-        final ViewParent customParent = Objects.requireNonNull(tab.getCustomView()).getParent();
-        if (customParent != null) {
-            ((ViewGroup) customParent).removeView(tab.getCustomView());
-        }
-
-        tab.setCustomView(tab_icon(BOOK_GROUPS[group], R.drawable.ic_arrow_drop_down_black_24dp));
-        View tabView = (View) tab.getCustomView().getParent();
-        tabView.setTag(0);
+        View customView = tab.getCustomView();
+        if (customView == null) return;
+        TextView tv = customView.findViewById(R.id.tabtext);
+        tv.setText(getResources().getStringArray(R.array.book_group_array)[group]);
     }
 
     private View tab_icon(String name, Integer iconID) {
@@ -277,7 +291,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
                 }
                 break;
             case R.id.action_add_url:
-                moProgressHUD.showInputBox("添加书籍网址",
+                moDialogHUD.showInputBox("添加书籍网址",
                         null,
                         null,
                         inputText -> mPresenter.addBookUrl(inputText));
@@ -286,7 +300,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
                 if (!isNetWorkAvailable())
                     toast("网络连接不可用，无法下载！");
                 else
-                    RxBus.get().post(RxBusTag.DOWNLOAD_ALL, 1000);
+                    RxBus.get().post(RxBusTag.DOWNLOAD_ALL, 10000);
                 break;
             case R.id.action_list_grid:
                 editor.putBoolean("bookshelfIsList", !viewIsList);
@@ -382,28 +396,28 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
             drawer.closeDrawers();
             switch (menuItem.getItemId()) {
                 case R.id.action_book_source_manage:
-                    new Handler().postDelayed(() -> BookSourceActivity.startThis(this), 200);
+                    handler.postDelayed(() -> BookSourceActivity.startThis(this), 200);
                     break;
                 case R.id.action_replace_rule:
-                    new Handler().postDelayed(() -> ReplaceRuleActivity.startThis(this), 200);
+                    handler.postDelayed(() -> ReplaceRuleActivity.startThis(this), 200);
                     break;
                 case R.id.action_download:
-                    new Handler().postDelayed(() -> DownloadActivity.startThis(this), 200);
+                    handler.postDelayed(() -> DownloadActivity.startThis(this), 200);
                     break;
                 case R.id.action_setting:
-                    new Handler().postDelayed(() -> SettingActivity.startThis(this), 200);
+                    handler.postDelayed(() -> SettingActivity.startThis(this), 200);
                     break;
                 case R.id.action_about:
-                    new Handler().postDelayed(() -> AboutActivity.startThis(this), 200);
+                    handler.postDelayed(() -> AboutActivity.startThis(this), 200);
                     break;
                 case R.id.action_donate:
-                    new Handler().postDelayed(() -> DonateActivity.startThis(this), 200);
+                    handler.postDelayed(() -> DonateActivity.startThis(this), 200);
                     break;
                 case R.id.action_backup:
-                    backup();
+                    handler.postDelayed(this::backup, 200);
                     break;
                 case R.id.action_restore:
-                    restore();
+                    handler.postDelayed(this::restore, 200);
                     break;
                 case R.id.action_night_theme:
                     swNightTheme.setChecked(!isNightTheme());
@@ -470,7 +484,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
             //书源为空时加载默认书源
             BookSourceManager.initDefaultBookSource(this);
             //更新日志
-            moProgressHUD.showAssetMarkdown("updateLog.md");
+            moDialogHUD.showAssetMarkdown("updateLog.md");
         }
     }
 
@@ -486,27 +500,18 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
         if (!isRecreate) {
             versionUpRun();
             requestPermission();
+            handler.postDelayed(this::preloadReader, 200);
         }
+        handler.postDelayed(() -> UpLastChapterModel.getInstance().startUpdate(), 60 * 1000);
     }
 
     @Override
     public void dismissHUD() {
-        moProgressHUD.dismiss();
+        moDialogHUD.dismiss();
     }
 
-    @Override
-    public void refreshError(String error) {
-        toast(error);
-    }
-
-    @Override
-    public void showLoading(String msg) {
-        moProgressHUD.showLoading(msg);
-    }
-
-    @Override
     public void onRestore(String msg) {
-        moProgressHUD.showLoading(msg);
+        moDialogHUD.showLoading(msg);
     }
 
     @Override
@@ -518,7 +523,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
 
     @Override
     public boolean onKeyDown(int keyCode, KeyEvent event) {
-        Boolean mo = moProgressHUD.onKeyDown(keyCode, event);
+        Boolean mo = moDialogHUD.onKeyDown(keyCode, event);
         if (mo) {
             return true;
         } else if (mTlIndicator.getSelectedTabPosition() != 0) {
@@ -550,9 +555,8 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
     }
 
     @Override
-    public void onDestroy() {
-        if (preferences.getBoolean("fadeTTS", false))
-            mPresenter.resetVolume();
+    protected void onDestroy() {
+        UpLastChapterModel.getInstance().onDestroy();
         super.onDestroy();
     }
 
@@ -560,6 +564,13 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
 
+    }
+
+    private void preloadReader() {
+        AsyncTask.execute(() -> {
+            ReadBookControl.getInstance();
+            ChapterContentHelp.getInstance();
+        });
     }
 
 }

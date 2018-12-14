@@ -1,10 +1,10 @@
 package com.monke.monkeybook.help;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.pm.PackageInfo;
 import android.content.pm.PackageManager;
 import android.os.Build;
-import android.os.Environment;
 import android.os.Looper;
 import android.util.Log;
 import android.widget.Toast;
@@ -22,8 +22,6 @@ import java.util.Map;
 
 /**
  * 异常管理类
- * <p/>
- * Created by imtianx on 2016-7-10.
  */
 public class CrashHandler implements Thread.UncaughtExceptionHandler {
 
@@ -45,10 +43,12 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
     /**
      * 格式化时间
      */
+    @SuppressLint("SimpleDateFormat")
     private SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd-HH-mm-ss");
 
     private String TAG = this.getClass().getSimpleName();
 
+    @SuppressLint("StaticFieldLeak")
     private static CrashHandler mInstance;
 
     private CrashHandler() {
@@ -83,7 +83,7 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
         } else {
             //自己处理
             try {//延迟3秒杀进程
-                Thread.sleep(2000);
+                Thread.sleep(3000);
             } catch (InterruptedException e) {
                 Log.e(TAG, "error : ", e);
             }
@@ -110,7 +110,7 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
             public void run() {
                 Looper.prepare();
                 //在此处处理出现异常的情况
-                Toast.makeText(mContext, ex.getMessage(), Toast.LENGTH_SHORT).show();
+                Toast.makeText(mContext, ex.getMessage(), Toast.LENGTH_LONG).show();
                 Looper.loop();
             }
         }.start();
@@ -122,10 +122,8 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
 
     /**
      * 收集设备参数信息
-     *
-     * @param ctx
      */
-    public void collectDeviceInfo(Context ctx) {
+    private void collectDeviceInfo(Context ctx) {
         //获取versionName,versionCode
         try {
             PackageManager pm = ctx.getPackageManager();
@@ -160,17 +158,14 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
 
     /**
      * 保存错误信息到文件中
-     *
-     * @param ex
-     * @return 返回文件名称, 便于将文件传送到服务器
      */
-    private String saveCrashInfo2File(Throwable ex) {
+    private void saveCrashInfo2File(Throwable ex) {
 
-        StringBuffer sb = new StringBuffer();
+        StringBuilder sb = new StringBuilder();
         for (Map.Entry<String, String> entry : paramsMap.entrySet()) {
             String key = entry.getKey();
             String value = entry.getValue();
-            sb.append(key + "=" + value + "\n");
+            sb.append(key).append("=").append(value).append("\n");
         }
 
         Writer writer = new StringWriter();
@@ -188,21 +183,18 @@ public class CrashHandler implements Thread.UncaughtExceptionHandler {
             long timestamp = System.currentTimeMillis();
             String time = format.format(new Date());
             String fileName = "crash-" + time + "-" + timestamp + ".log";
-            if (Environment.getExternalStorageState().equals(Environment.MEDIA_MOUNTED)) {
-                String path = Environment.getExternalStorageDirectory().getAbsolutePath() + "/YueDu/crash/";
-                File dir = new File(path);
-                if (!dir.exists()) {
-                    dir.mkdirs();
-                }
-                FileOutputStream fos = new FileOutputStream(path + fileName);
-                fos.write(sb.toString().getBytes());
-                Log.i(TAG, "saveCrashInfo2File: "+sb.toString());
-                fos.close();
+            String path = FileHelp.getCachePath() + "/crash/";
+            File dir = new File(path);
+            if (!dir.exists()) {
+                //noinspection ResultOfMethodCallIgnored
+                dir.mkdirs();
             }
-            return fileName;
+            FileOutputStream fos = new FileOutputStream(path + fileName);
+            fos.write(sb.toString().getBytes());
+            Log.i(TAG, "saveCrashInfo2File: "+sb.toString());
+            fos.close();
         } catch (Exception e) {
             Log.e(TAG, "an error occured while writing file...", e);
         }
-        return null;
     }
 }

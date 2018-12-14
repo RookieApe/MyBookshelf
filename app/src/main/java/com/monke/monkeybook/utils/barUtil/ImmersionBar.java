@@ -6,7 +6,6 @@ import android.app.Activity;
 import android.app.Dialog;
 import android.database.ContentObserver;
 import android.graphics.Color;
-import android.graphics.Rect;
 import android.os.Build;
 import android.os.Handler;
 import android.provider.Settings;
@@ -21,7 +20,6 @@ import android.support.v4.app.Fragment;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.graphics.ColorUtils;
 import android.support.v4.widget.DrawerLayout;
-import android.util.DisplayMetrics;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -29,8 +27,6 @@ import android.view.ViewTreeObserver;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.FrameLayout;
-
-import com.monke.monkeybook.widget.flowlayout.TagFlowLayout;
 
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
@@ -2178,30 +2174,4 @@ public class ImmersionBar {
         return str == null || str.trim().length() == 0;
     }
 
-    public static void resetBoxPosition(Activity activity, View prentView, int viewId){
-
-        final View decorView=(activity).getWindow().getDecorView();
-        decorView.getViewTreeObserver().addOnGlobalLayoutListener(() -> {
-            try {
-                Rect rect = new Rect();
-                decorView.getWindowVisibleDisplayFrame(rect);
-                int screenHeight = getScreenHeight(activity);
-                int heightDifference = screenHeight - rect.bottom;//计算软键盘占有的高度  = 屏幕高度 - 视图可见高度
-                View view = prentView.findViewById(viewId);
-                ViewGroup.MarginLayoutParams layoutParams = (ViewGroup.MarginLayoutParams) view.getLayoutParams();
-                layoutParams.setMargins(TagFlowLayout.dip2px(activity, 20), 0, TagFlowLayout.dip2px(activity, 20), heightDifference);//设置rlContent的marginBottom的值为软键盘占有的高度即可
-                view.setLayoutParams(layoutParams);
-                view.requestLayout();
-            } catch (Exception e) {
-                e.printStackTrace();
-            }
-        });
-    }
-
-    private static int getScreenHeight(Activity activity){
-        WindowManager manager = (activity).getWindowManager();
-        DisplayMetrics outMetrics = new DisplayMetrics();
-        manager.getDefaultDisplay().getMetrics(outMetrics);
-        return  outMetrics.heightPixels;
-    }
 }

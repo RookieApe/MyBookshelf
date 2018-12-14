@@ -21,12 +21,13 @@ import com.monke.monkeybook.base.MBaseFragment;
 import com.monke.monkeybook.bean.BookShelfBean;
 import com.monke.monkeybook.dao.DbHelper;
 import com.monke.monkeybook.help.MyItemTouchHelpCallback;
-import com.monke.monkeybook.presenter.BookDetailPresenterImpl;
-import com.monke.monkeybook.presenter.BookListPresenterImpl;
-import com.monke.monkeybook.presenter.ReadBookPresenterImpl;
+import com.monke.monkeybook.presenter.BookDetailPresenter;
+import com.monke.monkeybook.presenter.BookListPresenter;
+import com.monke.monkeybook.presenter.ReadBookPresenter;
 import com.monke.monkeybook.presenter.contract.BookListContract;
 import com.monke.monkeybook.view.activity.BookDetailActivity;
 import com.monke.monkeybook.view.activity.ReadBookActivity;
+import com.monke.monkeybook.view.adapter.BookShelfAdapter;
 import com.monke.monkeybook.view.adapter.BookShelfGridAdapter;
 import com.monke.monkeybook.view.adapter.BookShelfListAdapter;
 import com.monke.monkeybook.view.adapter.base.OnItemClickListenerTwo;
@@ -51,14 +52,12 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
     RelativeLayout rlEmptyView;
 
     private Unbinder unbinder;
-    private boolean viewIsList;
     private String bookPx;
     private boolean resumed = false;
     private boolean isRecreate;
     private int group;
 
-    private BookShelfGridAdapter bookShelfGridAdapter;
-    private BookShelfListAdapter bookShelfListAdapter;
+    private BookShelfAdapter bookShelfAdapter;
 
     private CallBackValue callBackValue;
 
@@ -77,7 +76,7 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
 
     @Override
     protected BookListContract.Presenter initInjector() {
-        return new BookListPresenterImpl();
+        return new BookListPresenter();
     }
 
     @Override
@@ -87,18 +86,24 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
     }
 
     @Override
-    protected void bindView() {
-        super.bindView();
-        unbinder = ButterKnife.bind(this, view);
-        setUpAdapter();
-        refreshLayout.setColorSchemeColors(getResources().getColor(R.color.colorAccent));
+    protected void initData() {
+        bookPx = preferences.getString(getString(R.string.pk_bookshelf_px), "0");
+        isRecreate = callBackValue != null && callBackValue.isRecreate();
     }
 
     @Override
-    protected void initData() {
-        viewIsList = preferences.getBoolean("bookshelfIsList", true);
-        bookPx = preferences.getString(getString(R.string.pk_bookshelf_px), "0");
-        isRecreate = callBackValue != null && callBackValue.isRecreate();
+    protected void bindView() {
+        super.bindView();
+        unbinder = ButterKnife.bind(this, view);
+        if (preferences.getBoolean("bookshelfIsList", true)) {
+            rvBookshelf.setLayoutManager(new LinearLayoutManager(getContext()));
+            bookShelfAdapter = new BookShelfListAdapter(getActivity());
+        } else {
+            rvBookshelf.setLayoutManager(new GridLayoutManager(getContext(), 3));
+            bookShelfAdapter = new BookShelfGridAdapter(getActivity());
+        }
+        rvBookshelf.setAdapter((RecyclerView.Adapter) bookShelfAdapter);
+        refreshLayout.setColorSchemeColors(getResources().getColor(R.color.colorAccent));
     }
 
     @Override
@@ -132,49 +137,19 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
             ItemTouchHelper itemTouchHelper = new ItemTouchHelper(itemTouchHelpCallback);
             itemTouchHelper.attachToRecyclerView(rvBookshelf);
         }
-        if (viewIsList) {
-            bookShelfListAdapter.setItemClickListener(getAdapterListener());
-            itemTouchHelpCallback.setOnItemTouchCallbackListener(bookShelfListAdapter.getItemTouchCallbackListener());
-        } else {
-            bookShelfGridAdapter.setItemClickListener(getAdapterListener());
-            itemTouchHelpCallback.setOnItemTouchCallbackListener(bookShelfGridAdapter.getItemTouchCallbackListener());
-        }
-    }
-
-
-    private void setUpAdapter() {
-        if (viewIsList) {
-            bookShelfListAdapter = new BookShelfListAdapter(getActivity(), getNeedAnim());
-            rvBookshelf.setAdapter(bookShelfListAdapter);
-            rvBookshelf.setLayoutManager(new LinearLayoutManager(getContext()));
-        } else {
-            bookShelfGridAdapter = new BookShelfGridAdapter(getActivity(), getNeedAnim());
-            rvBookshelf.setAdapter(bookShelfGridAdapter);
-            rvBookshelf.setLayoutManager(new GridLayoutManager(getContext(), 3));
-        }
-    }
-
-    private boolean getNeedAnim() {
-        return preferences.getBoolean(getString(R.string.pk_bookshelf_anim), false);
-    }
-
-    private List<BookShelfBean> getBookshelfList() {
-        if (viewIsList) {
-            return bookShelfListAdapter.getBooks();
-        } else {
-            return bookShelfGridAdapter.getBooks();
-        }
+        bookShelfAdapter.setItemClickListener(getAdapterListener());
+        itemTouchHelpCallback.setOnItemTouchCallbackListener(bookShelfAdapter.getItemTouchCallbackListener());
     }
 
     private OnItemClickListenerTwo getAdapterListener() {
         return new OnItemClickListenerTwo() {
             @Override
             public void onClick(View view, int index) {
-                BookShelfBean bookShelfBean = getBookshelfList().get(index);
+                BookShelfBean bookShelfBean = bookShelfAdapter.getBooks().get(index);
                 bookShelfBean.setHasUpdate(false);
                 DbHelper.getInstance().getmDaoSession().getBookShelfBeanDao().insertOrReplace(bookShelfBean);
                 Intent intent = new Intent(getActivity(), ReadBookActivity.class);
-                intent.putExtra("openFrom", ReadBookPresenterImpl.OPEN_FROM_APP);
+                intent.putExtra("openFrom", ReadBookPresenter.OPEN_FROM_APP);
                 String key = String.valueOf(System.currentTimeMillis());
                 intent.putExtra("data_key", key);
                 try {
@@ -189,10 +164,10 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
             @Override
             public void onLongClick(View view, int index) {
                 Intent intent = new Intent(getActivity(), BookDetailActivity.class);
-                intent.putExtra("openFrom", BookDetailPresenterImpl.FROM_BOOKSHELF);
+                intent.putExtra("openFrom", BookDetailPresenter.FROM_BOOKSHELF);
                 String key = String.valueOf(System.currentTimeMillis());
                 intent.putExtra("data_key", key);
-                BitIntentDataManager.getInstance().putData(key, getBookshelfList().get(index));
+                BitIntentDataManager.getInstance().putData(key, bookShelfAdapter.getBooks().get(index));
 
                 startActivityByAnim(intent, android.R.anim.fade_in, android.R.anim.fade_out);
 
@@ -216,9 +191,8 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
     }
 
     private void stopBookShelfRefreshAnim() {
-        List<BookShelfBean> bookShelfBeans = getBookshelfList();
-        if (bookShelfBeans != null && bookShelfBeans.size() > 0) {
-            for (BookShelfBean bookShelfBean : bookShelfBeans) {
+        if (bookShelfAdapter.getBooks() != null && bookShelfAdapter.getBooks().size() > 0) {
+            for (BookShelfBean bookShelfBean : bookShelfAdapter.getBooks()) {
                 if (bookShelfBean.isLoading()) {
                     bookShelfBean.setLoading(false);
                     refreshBook(bookShelfBean.getNoteUrl());
@@ -229,27 +203,19 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
 
     @Override
     public void refreshBookShelf(List<BookShelfBean> bookShelfBeanList) {
-        if (viewIsList) {
-            bookShelfListAdapter.replaceAll(bookShelfBeanList, bookPx);
-        } else {
-            bookShelfGridAdapter.replaceAll(bookShelfBeanList, bookPx);
-        }
+        bookShelfAdapter.replaceAll(bookShelfBeanList, bookPx);
         if (rlEmptyView == null) return;
         if (bookShelfBeanList.size() > 0) {
             rlEmptyView.setVisibility(View.GONE);
         } else {
-            tvEmpty.setText("书架空空，去搜索添加书籍吧！");
+            tvEmpty.setText(R.string.bookshelf_empty);
             rlEmptyView.setVisibility(View.VISIBLE);
         }
     }
 
     @Override
     public void refreshBook(String noteUrl) {
-        if (viewIsList) {
-            bookShelfListAdapter.refreshBook(noteUrl);
-        } else {
-            bookShelfGridAdapter.refreshBook(noteUrl);
-        }
+        bookShelfAdapter.refreshBook(noteUrl);
     }
 
     @Override
@@ -259,11 +225,6 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
 
     @Override
     public void refreshError(String error) {
-
-    }
-
-    @Override
-    public void recreate() {
 
     }
 

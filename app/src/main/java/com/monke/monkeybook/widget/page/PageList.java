@@ -1,20 +1,20 @@
 package com.monke.monkeybook.widget.page;
 
+import android.support.annotation.NonNull;
 import android.text.Layout;
 import android.text.StaticLayout;
 
 import com.monke.monkeybook.bean.ChapterListBean;
 import com.monke.monkeybook.help.ChapterContentHelp;
 import com.monke.monkeybook.utils.NetworkUtil;
-
-import org.jetbrains.annotations.NotNull;
+import com.monke.monkeybook.utils.StringUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 
 class PageList {
     private PageLoader pageLoader;
-    private ChapterContentHelp contentHelper = ChapterContentHelp.getInstance();
+    private ChapterContentHelp contentHelper = new ChapterContentHelp();
 
     PageList(PageLoader pageLoader) {
         this.pageLoader = pageLoader;
@@ -23,7 +23,7 @@ class PageList {
     TxtChapter dealLoadPageList(ChapterListBean chapter, boolean isPrepare) {
         TxtChapter txtChapter = new TxtChapter(chapter.getDurChapterIndex());
         // 判断章节是否存在
-        if (!isPrepare || !pageLoader.hasChapterData(chapter)) {
+        if (!isPrepare || pageLoader.noChapterData(chapter)) {
             if (pageLoader instanceof PageLoaderNet && !NetworkUtil.isNetWorkAvailable()) {
                 txtChapter.setStatus(Enum.PageStatus.ERROR);
                 txtChapter.setMsg("网络连接不可用");
@@ -56,11 +56,11 @@ class PageList {
      * @param chapter：章节信息
      * @param content：章节的文本
      */
-    private List<TxtPage> loadPageList(ChapterListBean chapter, @NotNull String content) {
+    private List<TxtPage> loadPageList(ChapterListBean chapter, @NonNull String content) {
         //生成的页面
         List<TxtPage> pages = new ArrayList<>();
-        if (pageLoader.getBook() == null) return pages;
-        content = contentHelper.replaceContent(pageLoader.getBook(), content);
+        if (pageLoader.bookShelfBean == null) return pages;
+        content = contentHelper.replaceContent(pageLoader.bookShelfBean.getBookInfoBean().getName(), pageLoader.bookShelfBean.getTag(), content);
         String allLine[] = content.split("\n");
         List<String> lines = new ArrayList<>();
         int rHeight = pageLoader.mVisibleHeight - pageLoader.contentMarginHeight * 2;
@@ -68,16 +68,17 @@ class PageList {
         boolean showTitle = pageLoader.readBookControl.getShowTitle(); // 是否展示标题
         String paragraph = null;
         if (showTitle) {
-            paragraph = contentHelper.replaceContent(pageLoader.getBook(), chapter.getDurChapterName());
+            paragraph = contentHelper.replaceContent(pageLoader.bookShelfBean.getBookInfoBean().getName(), pageLoader.bookShelfBean.getTag(), chapter.getDurChapterName());
             paragraph = paragraph.trim() + "\n";
         }
         int i = 1;
         while (showTitle || i < allLine.length) {
             // 重置段落
             if (!showTitle) {
-                paragraph = "\u3000\u3000" + allLine[i].replaceAll("\\s", " ").trim() + "\n";
+                paragraph = allLine[i].replaceAll("\\s", " ").trim();
                 i++;
-                if (paragraph.equals("\u3000\u3000\n")) continue;
+                if (paragraph.equals("")) continue;
+                paragraph = StringUtils.halfToFull("  ") + paragraph + "\n";
             }
             int wordCount;
             String subStr;

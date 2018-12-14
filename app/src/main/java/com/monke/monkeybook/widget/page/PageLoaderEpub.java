@@ -1,5 +1,8 @@
 package com.monke.monkeybook.widget.page;
 
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Canvas;
 import android.text.TextUtils;
 
 import com.monke.basemvplib.CharsetDetector;
@@ -8,6 +11,7 @@ import com.monke.monkeybook.bean.BookShelfBean;
 import com.monke.monkeybook.bean.ChapterListBean;
 import com.monke.monkeybook.help.BookshelfHelp;
 import com.monke.monkeybook.help.FormatWebText;
+import com.monke.monkeybook.utils.RxUtils;
 import com.trello.rxlifecycle2.android.ActivityEvent;
 
 import org.jsoup.Jsoup;
@@ -25,13 +29,16 @@ import java.util.List;
 
 import io.reactivex.Observable;
 import io.reactivex.ObservableOnSubscribe;
+import io.reactivex.Observer;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.schedulers.Schedulers;
 import nl.siegmann.epublib.domain.Book;
 import nl.siegmann.epublib.domain.MediaType;
+import nl.siegmann.epublib.domain.Metadata;
 import nl.siegmann.epublib.domain.Resource;
 import nl.siegmann.epublib.domain.SpineReference;
+import nl.siegmann.epublib.domain.TOCReference;
 import nl.siegmann.epublib.epub.EpubReader;
 import nl.siegmann.epublib.service.MediatypeService;
 
@@ -40,15 +47,15 @@ public class PageLoaderEpub extends PageLoader {
     //编码类型
     private Charset mCharset;
 
-    private Book mRawBook;
+    private Book book;
 
-    private Disposable mChapterDisp = null;
+    private List<ChapterListBean> chapterList;
 
-    PageLoaderEpub(PageView pageView) {
-        super(pageView);
+    PageLoaderEpub(PageView pageView, BookShelfBean bookShelfBean) {
+        super(pageView, bookShelfBean);
     }
 
-    private Book readBook(File file) {
+    public static Book readBook(File file) {
         try {
             EpubReader epubReader = new EpubReader();
             MediaType[] lazyTypes = {
@@ -64,6 +71,33 @@ public class PageLoaderEpub extends PageLoader {
             e.printStackTrace();
             return null;
         }
+    }
+
+    private void extractScaledCoverImage() {
+        try {
+            byte[] data = book.getCoverImage().getData();
+            Bitmap rawCover = BitmapFactory.decodeByteArray(data, 0, data.length);
+            int width = rawCover.getWidth();
+            int height = rawCover.getHeight();
+            if (width <= mVisibleWidth && width >= 0.8 * mVisibleWidth) {
+                cover = rawCover;
+                return;
+            }
+            height = Math.round(mVisibleWidth * 1.0f * height / width);
+            cover = Bitmap.createScaledBitmap(rawCover, mVisibleWidth, height, true);
+        } catch (Exception ignored) {
+        }
+    }
+
+    @Override
+    public void drawCover(Canvas canvas, float top) {
+        if (cover == null) {
+            extractScaledCoverImage();
+        }
+        if (cover == null)
+            return;
+        int left = (mDisplayWidth - cover.getWidth()) / 2;
+        canvas.drawBitmap(cover, left, top, mTextPaint);
     }
 
     private String getCharset(Book book) {
@@ -86,39 +120,74 @@ public class PageLoaderEpub extends PageLoader {
     }
 
     private List<ChapterListBean> loadChapters() {
-        List<ChapterListBean> chapterList = new ArrayList<>();
-        List<SpineReference> spineReferences = mRawBook.getSpine().getSpineReferences();
-
-        for (int i = 0, size = spineReferences.size(); i < size; i++) {
-            Resource resource = spineReferences.get(i).getResource();
-            String title = "";
-            try {
-                Document doc = Jsoup.parse(new String(resource.getData(), mCharset));
-                Elements elements = doc.getElementsByTag("title");
-                if (elements.size() > 0) {
-                    title = elements.get(0).text();
+        BookShelfBean bookShelf = bookShelfBean;
+        Metadata metadata = book.getMetadata();
+        bookShelf.getBookInfoBean().setName(metadata.getFirstTitle());
+        if (metadata.getAuthors().size() > 0) {
+            String author = metadata.getAuthors().get(0).toString().replaceAll("^, |, $", "");
+            bookShelf.getBookInfoBean().setAuthor(FormatWebText.getAuthor(author));
+        }
+        if (metadata.getDescriptions().size() > 0) {
+            bookShelf.getBookInfoBean().setIntroduce(Jsoup.parse(metadata.getDescriptions().get(0)).text());
+        }
+        chapterList = new ArrayList<>();
+        List<TOCReference> refs = book.getTableOfContents().getTocReferences();
+        if (refs == null || refs.isEmpty()) {
+            List<SpineReference> spineReferences = book.getSpine().getSpineReferences();
+            for (int i = 0, size = spineReferences.size(); i < size; i++) {
+                Resource resource = spineReferences.get(i).getResource();
+                String title = resource.getTitle();
+                if (TextUtils.isEmpty(title)) {
+                    try {
+                        Document doc = Jsoup.parse(new String(resource.getData(), mCharset));
+                        Elements elements = doc.getElementsByTag("title");
+                        if (elements.size() > 0) {
+                            title = elements.get(0).text();
+                        }
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
+                ChapterListBean bean = new ChapterListBean();
+                bean.setDurChapterIndex(i);
+                bean.setNoteUrl(bookShelf.getNoteUrl());
+                bean.setDurChapterUrl(resource.getHref());
+                if (i == 0 && title.isEmpty()) {
+                    bean.setDurChapterName("封面");
+                } else {
+                    bean.setDurChapterName(title);
+                }
+                chapterList.add(bean);
             }
-            ChapterListBean bean = new ChapterListBean();
-            bean.setDurChapterIndex(i);
-            bean.setNoteUrl(getBook().getNoteUrl());
-            bean.setDurChapterUrl(resource.getHref());
-            if (i == 0) {
-                bean.setDurChapterName("封面");
-            } else {
-                bean.setDurChapterName(title);
+        } else {
+            parseMenu(refs, 0);
+            for (int i = 0; i < chapterList.size(); i++) {
+                chapterList.get(i).setDurChapterIndex(i);
             }
-            chapterList.add(bean);
         }
 
         return chapterList;
     }
 
+    private void parseMenu(List<TOCReference> refs, int level) {
+        if (refs == null) return;
+        for (TOCReference ref : refs) {
+            if (ref.getResource() != null) {
+                ChapterListBean chapterListBean = new ChapterListBean();
+                chapterListBean.setNoteUrl(bookShelfBean.getNoteUrl());
+                chapterListBean.setDurChapterName(ref.getTitle());
+                chapterListBean.setDurChapterUrl(ref.getCompleteHref());
+                chapterList.add(chapterListBean);
+            }
+            if (ref.getChildren() != null && !ref.getChildren().isEmpty()) {
+                parseMenu(ref.getChildren(), level + 1);
+            }
+        }
+    }
+
     @Override
     protected String getChapterContent(ChapterListBean chapter) throws Exception {
-        Resource resource = mRawBook.getSpine().getResource(chapter.getDurChapterIndex());
+        Resource resource = book.getResources().getByHref(chapter.getDurChapterUrl());
         StringBuilder content = new StringBuilder();
         Document doc = Jsoup.parse(new String(resource.getData(), mCharset));
         Elements elements = doc.getAllElements();
@@ -172,32 +241,24 @@ public class PageLoaderEpub extends PageLoader {
     }
 
     @Override
-    public void closeBook() {
-        super.closeBook();
-        if (mChapterDisp != null) {
-            mChapterDisp.dispose();
-            mChapterDisp = null;
-        }
-    }
-
-    @Override
     public void refreshChapterList() {
-        if (getBook() == null) return;
+        BookShelfBean bookShelf = bookShelfBean;
+        if (bookShelf == null) return;
 
         Observable.create((ObservableOnSubscribe<BookShelfBean>) e -> {
-            File bookFile = new File(getBook().getNoteUrl());
-            mRawBook = readBook(bookFile);
+            File bookFile = new File(bookShelf.getNoteUrl());
+            book = readBook(bookFile);
 
-            if (mRawBook == null) {
+            if (book == null) {
                 e.onError(new Exception("文件解析失败"));
                 return;
             }
-            if (TextUtils.isEmpty(getBook().getBookInfoBean().getCharset())) {
-                getBook().getBookInfoBean().setCharset(getCharset(mRawBook));
+            if (TextUtils.isEmpty(bookShelf.getBookInfoBean().getCharset())) {
+                bookShelf.getBookInfoBean().setCharset(getCharset(book));
             }
-            mCharset = Charset.forName(getBook().getBookInfoBean().getCharset());
+            mCharset = Charset.forName(bookShelf.getBookInfoBean().getCharset());
 
-            e.onNext(getBook());
+            e.onNext(bookShelf);
             e.onComplete();
         }).subscribeOn(Schedulers.single())
                 .flatMap(this::checkChapterList)
@@ -208,13 +269,13 @@ public class PageLoaderEpub extends PageLoader {
                     public void onNext(BookShelfBean bookShelfBean) {
                         isChapterListPrepare = true;
 
-                        // 加载并显示当前章节
-                        skipToChapter(bookShelfBean.getDurChapter(), bookShelfBean.getDurChapterPage());
-
                         //提示目录加载完成
                         if (mPageChangeListener != null) {
                             mPageChangeListener.onCategoryFinish(bookShelfBean.getChapterList());
                         }
+
+                        // 加载并显示当前章节
+                        skipToChapter(bookShelfBean.getDurChapter(), bookShelfBean.getDurChapterPage());
                     }
 
                     @Override
@@ -225,12 +286,54 @@ public class PageLoaderEpub extends PageLoader {
     }
 
     @Override
-    protected boolean hasChapterData(ChapterListBean chapter) {
-        return true;
+    protected boolean noChapterData(ChapterListBean chapter) {
+        return false;
     }
 
     @Override
     public void updateChapter() {
+        BookShelfBean bookShelf = bookShelfBean;
+        mPageView.getActivity().toast("目录更新中");
+        Observable.create((ObservableOnSubscribe<BookShelfBean>) e->{
+            bookShelf.setChapterList(null);
+            BookshelfHelp.delChapterList(bookShelf.getNoteUrl());
+            if (TextUtils.isEmpty(bookShelf.getBookInfoBean().getCharset())) {
+                bookShelf.getBookInfoBean().setCharset(getCharset(book));
+            }
+            mCharset = Charset.forName(bookShelf.getBookInfoBean().getCharset());
+            e.onNext(bookShelf);
+            e.onComplete();
+        }).flatMap(this::checkChapterList)
+                .compose(RxUtils::toSimpleSingle)
+                .subscribe(new Observer<BookShelfBean>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+                        compositeDisposable.add(d);
+                    }
 
+                    @Override
+                    public void onNext(BookShelfBean bookShelfBean) {
+                        mPageView.getActivity().toast("更新完成");
+                        isChapterListPrepare = true;
+
+                        //提示目录加载完成
+                        if (mPageChangeListener != null) {
+                            mPageChangeListener.onCategoryFinish(bookShelfBean.getChapterList());
+                        }
+
+                        // 加载并显示当前章节
+                        skipToChapter(bookShelfBean.getDurChapter(), bookShelfBean.getDurChapterPage());
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        chapterError(e.getMessage());
+                    }
+
+                    @Override
+                    public void onComplete() {
+
+                    }
+                });
     }
 }

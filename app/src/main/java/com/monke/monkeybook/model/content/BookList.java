@@ -17,7 +17,7 @@ import retrofit2.Response;
 
 import static android.text.TextUtils.isEmpty;
 
-public class BookList {
+class BookList {
     private String tag;
     private String name;
     private BookSourceBean bookSourceBean;
@@ -28,7 +28,7 @@ public class BookList {
         this.bookSourceBean = bookSourceBean;
     }
 
-    public Observable<List<SearchBookBean>> analyzeSearchBook(final Response<String> response) {
+    Observable<List<SearchBookBean>> analyzeSearchBook(final Response<String> response) {
         return Observable.create(e -> {
             try {
                 String baseURI;
@@ -38,6 +38,7 @@ public class BookList {
                 } else {
                     baseURI = response.raw().request().url().toString();
                 }
+                assert response.body() != null;
                 Document doc = Jsoup.parse(response.body());
                 Elements booksE = AnalyzeElement.getElements(doc, bookSourceBean.getRuleSearchList());
                 if (null != booksE && booksE.size() > 0) {
@@ -49,13 +50,13 @@ public class BookList {
                         AnalyzeElement analyzeElement = new AnalyzeElement(booksE.get(i), baseURI);
                         item.setAuthor(FormatWebText.getAuthor(analyzeElement.getResult(bookSourceBean.getRuleSearchAuthor())));
                         item.setKind(analyzeElement.getResult(bookSourceBean.getRuleSearchKind()));
-                        item.setLastChapter(analyzeElement.getResult(bookSourceBean.getRuleSearchLastChapter()));
-                        item.setName(analyzeElement.getResult(bookSourceBean.getRuleSearchName()));
-                        item.setNoteUrl(analyzeElement.getResult(bookSourceBean.getRuleSearchNoteUrl()));
+                        item.setLastChapter(FormatWebText.trim(analyzeElement.getResult(bookSourceBean.getRuleSearchLastChapter())));
+                        item.setName(FormatWebText.getBookName(analyzeElement.getResult(bookSourceBean.getRuleSearchName())));
+                        item.setNoteUrl(analyzeElement.getResultUrl(bookSourceBean.getRuleSearchNoteUrl()));
                         if (isEmpty(item.getNoteUrl())) {
                             item.setNoteUrl(baseURI);
                         }
-                        item.setCoverUrl(analyzeElement.getResult(bookSourceBean.getRuleSearchCoverUrl()));
+                        item.setCoverUrl(analyzeElement.getResultUrl(bookSourceBean.getRuleSearchCoverUrl()));
                         if (!isEmpty(item.getName())) {
                             books.add(item);
                         }

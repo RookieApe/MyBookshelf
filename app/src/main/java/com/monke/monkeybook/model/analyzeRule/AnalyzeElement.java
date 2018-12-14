@@ -13,6 +13,7 @@ import org.jsoup.select.Elements;
 import java.util.ArrayList;
 import java.util.List;
 
+import static android.text.TextUtils.indexOf;
 import static android.text.TextUtils.isEmpty;
 
 /**
@@ -37,20 +38,41 @@ public class AnalyzeElement {
         if (temp == null || isEmpty(rule)) {
             return elements;
         }
-        boolean isAnd;
+        String elementsType;
         String[] ruleStrS;
         if (rule.contains("&")) {
-            isAnd = true;
+            elementsType = "&";
             ruleStrS = rule.split("&");
+        } else if (rule.contains("%")) {
+            elementsType = "%";
+            ruleStrS = rule.split("%");
         } else {
-            isAnd = false;
+            elementsType = "|";
             ruleStrS = rule.split("\\|");
         }
+        List<Elements> elementsList = new ArrayList<>();
         for (String ruleStr : ruleStrS) {
             Elements tempS = getElementsSingle(temp, ruleStr);
-            elements.addAll(tempS);
-            if (elements.size() > 0 && !isAnd) {
+            elementsList.add(tempS);
+            if (elements.size() > 0 && elementsType.equals("|")) {
                 break;
+            }
+        }
+        if (elementsList.size() > 0) {
+            switch (elementsType) {
+                case "%":
+                    for (int i = 0; i < elementsList.get(0).size(); i++) {
+                        for (Elements es : elementsList) {
+                            if (i < es.size()) {
+                                elements.add(es.get(i));
+                            }
+                        }
+                    }
+                    break;
+                default:
+                    for (Elements es : elementsList) {
+                        elements.addAll(es);
+                    }
             }
         }
         return elements;
@@ -105,8 +127,9 @@ public class AnalyzeElement {
                     String[] rulePcs = rulePc[1].split(":");
                     if (rulePcs.length < elements.size() - 1) {
                         for (String pc : rulePcs) {
-                            if (pc.equals("%")) {
-                                elements.set(elements.size() - 1, null);
+                            int pcInt = Integer.parseInt(pc);
+                            if (pcInt < 0 && elements.size() + pcInt >= 0) {
+                                elements.set(elements.size() + pcInt, null);
                             } else if (Integer.parseInt(pc) < elements.size()) {
                                 elements.set(Integer.parseInt(pc), null);
                             }
@@ -141,24 +164,7 @@ public class AnalyzeElement {
         if (isEmpty(ruleStrS[0])) {
             result = element.data();
         } else {
-            boolean isAnd;
-            if (ruleStrS[0].contains("&")) {
-                isAnd = true;
-                ruleStrS = ruleStrS[0].split("&");
-            } else {
-                isAnd = false;
-                ruleStrS = ruleStrS[0].split("\\|");
-            }
-            List<String> textS = new ArrayList<>();
-            for (String ruleStrX : ruleStrS) {
-                List<String> temp = getResultList(ruleStrX);
-                if (temp != null) {
-                    textS.addAll(temp);
-                }
-                if (textS.size() > 0 && !isAnd) {
-                    break;
-                }
-            }
+            List<String> textS = getAllResultList(ruleStrS[0]);
             if (textS.size() == 0) {
                 return null;
             }
@@ -182,6 +188,62 @@ public class AnalyzeElement {
             result = result.replaceAll(regex, "");
         }
         return result;
+    }
+
+    public String getResultUrl(String ruleStr) {
+        List<String> urlList = getAllResultList(ruleStr);
+        if (urlList.size() > 0) {
+            return urlList.get(0);
+        }
+        return null;
+    }
+
+    /**
+     * 获取所有内容列表
+     */
+    public List<String> getAllResultList(String ruleStr) {
+        List<String> textS = new ArrayList<>();
+        if (isEmpty(ruleStr)) {
+            return textS;
+        }
+        String regex = null;
+        //分离正则表达式
+        String[] ruleStrS = ruleStr.trim().split("#");
+        if (ruleStrS.length > 1) {
+            regex = ruleStrS[1];
+        }
+        if (isEmpty(ruleStrS[0])) {
+            textS.add(element.data());
+        } else {
+            boolean isAnd;
+            if (ruleStrS[0].contains("&")) {
+                isAnd = true;
+                ruleStrS = ruleStrS[0].split("&");
+            } else {
+                isAnd = false;
+                ruleStrS = ruleStrS[0].split("\\|");
+            }
+            for (String ruleStrX : ruleStrS) {
+                List<String> temp = getResultList(ruleStrX);
+                if (temp != null) {
+                    textS.addAll(temp);
+                }
+                if (textS.size() > 0 && !isAnd) {
+                    break;
+                }
+            }
+        }
+        if (!TextUtils.isEmpty(regex)) {
+            List<String> tempList = new ArrayList<>(textS);
+            textS.clear();
+            for (String text : tempList) {
+                text = text.replaceAll(regex, "");
+                if (text.length() > 0) {
+                    textS.add(text);
+                }
+            }
+        }
+        return textS;
     }
 
     /**
@@ -234,6 +296,7 @@ public class AnalyzeElement {
                     }
                     break;
                 case "html":
+                    elements.select("script").remove();
                     String html = elements.html();
                     String[] htmlS = html.replaceAll("<(br|p.*?|div.*?|/p|/div)>", "\n")
                             .replaceAll("<.*?>", "")
@@ -245,8 +308,16 @@ public class AnalyzeElement {
                     }
                     break;
                 default:
-                    String absURL = NetworkUtil.getAbsoluteURL(baseURL, elements.get(0).attr(lastRule));
-                    textS.add(absURL);
+                    List<String> urlList = new ArrayList<>();
+                    for (Element element : elements) {
+                        String url = element.attr(lastRule);
+                        if (!TextUtils.isEmpty(url) && urlList.indexOf(url) == -1) {
+                            urlList.add(url);
+                        }
+                    }
+                    for (String url : urlList) {
+                        textS.add(NetworkUtil.getAbsoluteURL(baseURL, url));
+                    }
             }
             return textS;
         } catch (Exception e) {

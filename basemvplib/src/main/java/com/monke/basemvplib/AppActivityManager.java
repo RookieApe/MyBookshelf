@@ -14,16 +14,16 @@ public class AppActivityManager {
 
     private static List<WeakReference<Activity>> activities;
 
-    private AppActivityManager(){
+    private AppActivityManager() {
         activities = new ArrayList<>();
     }
 
     private static volatile AppActivityManager instance;
 
-    public static AppActivityManager getInstance(){
-        if(null == instance){
-            synchronized (AppActivityManager.class){
-                if(null == instance){
+    public static AppActivityManager getInstance() {
+        if (null == instance) {
+            synchronized (AppActivityManager.class) {
+                if (null == instance) {
                     instance = new AppActivityManager();
                 }
             }
@@ -35,76 +35,75 @@ public class AppActivityManager {
         return activities;
     }
 
-    /*
-    添加Activity
+    /**
+     * 添加Activity
      */
-    public void add(Activity activity){
+    public void add(Activity activity) {
         activities.add(new WeakReference<Activity>(activity));
     }
 
-    /*
-    移除Activity
+    /**
+     * 移除Activity
      */
-    public void remove(Activity activity){
-        for(WeakReference<Activity> temp :activities){
-            if(null != temp.get() && temp.get() == activity){
+    public void remove(Activity activity) {
+        for (WeakReference<Activity> temp : activities) {
+            if (null != temp.get() && temp.get() == activity) {
                 activities.remove(temp);
                 break;
             }
         }
     }
 
-    /*
-    移除Activity
+    /**
+     * 移除Activity
      */
-    public void remove(Class<?> activityClass){
-        for(Iterator<WeakReference<Activity>> iterator = activities.iterator();iterator.hasNext();){
+    public void remove(Class<?> activityClass) {
+        for (Iterator<WeakReference<Activity>> iterator = activities.iterator(); iterator.hasNext(); ) {
             WeakReference<Activity> item = iterator.next();
-            if(null != item && null != item.get() && item.get().getClass() == activityClass){
+            if (null != item && null != item.get() && item.get().getClass() == activityClass) {
                 iterator.remove();
             }
         }
     }
 
-    /*
-    关闭指定 activity
+    /**
+     * 关闭指定 activity
      */
-    public void finishActivity(BaseActivity... activities){
-        for(int i=0;i<activities.length;i++){
-            if(null != activities[i]){
-                activities[i].finish();
+    public void finishActivity(BaseActivity... activities) {
+        for (BaseActivity activity : activities) {
+            if (null != activity) {
+                activity.finish();
             }
         }
     }
 
-    /*
-    关闭指定 activity(class)
+    /**
+     * 关闭指定 activity(class)
      */
-    public void finishActivity(Class<?>... activityClasses){
-        ArrayList<WeakReference<Activity>> waitfinish = new ArrayList<>();
-        for(WeakReference<Activity> temp :activities){
-            for(int i=0;i<activityClasses.length;i++){
-                if(null != temp.get() && temp.get().getClass() == activityClasses[i]){
-                    waitfinish.add(temp);
+    public void finishActivity(Class<?>... activityClasses) {
+        ArrayList<WeakReference<Activity>> waitFinish = new ArrayList<>();
+        for (WeakReference<Activity> temp : activities) {
+            for (Class<?> activityClass : activityClasses) {
+                if (null != temp.get() && temp.get().getClass() == activityClass) {
+                    waitFinish.add(temp);
                     break;
                 }
             }
         }
-        for(WeakReference<Activity> activityWeakReference:waitfinish){
-            if(null != activityWeakReference.get()){
+        for (WeakReference<Activity> activityWeakReference : waitFinish) {
+            if (null != activityWeakReference.get()) {
                 activityWeakReference.get().finish();
             }
         }
     }
 
-    /*
-    判断指定Activity是否存在
+    /**
+     * 判断指定Activity是否存在
      */
-    public Boolean isExist(Class<?> activityClass){
+    public Boolean isExist(Class<?> activityClass) {
         Boolean result = false;
-        for(Iterator<WeakReference<Activity>> iterator = activities.iterator();iterator.hasNext();){
-            WeakReference<Activity> item = iterator.next();
-            if(null != item && null != item.get() && item.get().getClass() == activityClass){
+        for (WeakReference<Activity> item : activities) {
+            if (null != item && null != item.get() && item.get().getClass() == activityClass) {
                 result = true;
                 break;
             }

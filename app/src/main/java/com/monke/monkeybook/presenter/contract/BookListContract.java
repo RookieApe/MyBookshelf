@@ -30,14 +30,11 @@ public interface BookListContract {
 
         SharedPreferences getPreferences();
 
-        void recreate();
-
         /**
          * 更新Group
          */
         void updateGroup(Integer group);
 
-        void toast(String msg);
     }
 
     interface Presenter extends IPresenter {

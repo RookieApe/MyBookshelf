@@ -6,12 +6,13 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.monke.basemvplib.BaseModelImpl;
+import com.monke.monkeybook.bean.BaseChapterBean;
 import com.monke.monkeybook.bean.BookContentBean;
 import com.monke.monkeybook.bean.BookShelfBean;
 import com.monke.monkeybook.bean.ChapterListBean;
 import com.monke.monkeybook.bean.SearchBookBean;
 import com.monke.monkeybook.model.analyzeRule.AnalyzeHeaders;
-import com.monke.monkeybook.model.content.DefaultModelImpl;
+import com.monke.monkeybook.model.content.DefaultModel;
 import com.monke.monkeybook.model.impl.IHttpGetApi;
 import com.monke.monkeybook.model.impl.IStationBookModel;
 
@@ -79,7 +80,7 @@ public class My716 extends BaseModelImpl implements IStationBookModel {
                     searchBookBean.setCoverUrl("http://statics.zhuishushenqi.com" + book.get("cover").getAsString());
                     searchBookBean.setIntroduce(book.get("shortIntro").getAsString());
 
-                    Call<String> call = DefaultModelImpl.getRetrofitString("http://api.zhuishushenqi.com")
+                    Call<String> call = DefaultModel.getRetrofitString("http://api.zhuishushenqi.com")
                             .create(IHttpGetApi.class).getWebContentCall(searchBookBean.getNoteUrl(), AnalyzeHeaders.getMap(null));
                     String s = "";
                     try {
@@ -181,12 +182,12 @@ public class My716 extends BaseModelImpl implements IStationBookModel {
      * 章节缓存
      */
     @Override
-    public Observable<BookContentBean> getBookContent(final Scheduler scheduler, final String durChapterUrl, int durChapterIndex) {
+    public Observable<BookContentBean> getBookContent(final Scheduler scheduler, final BaseChapterBean chapterBean) {
         return getRetrofitString("http://chapterup.zhuishushenqi.com")
                 .create(IHttpGetApi.class)
-                .getWebContent(durChapterUrl, AnalyzeHeaders.getMap(null))
+                .getWebContent(chapterBean.getDurChapterUrl(), AnalyzeHeaders.getMap(null))
                 .subscribeOn(Schedulers.newThread())
-                .flatMap(response -> analyzeBookContent(response.body(), durChapterUrl, durChapterIndex));
+                .flatMap(response -> analyzeBookContent(response.body(), chapterBean.getDurChapterUrl(), chapterBean.getDurChapterIndex()));
     }
 
     private Observable<BookContentBean> analyzeBookContent(String s, String durChapterUrl, int durChapterIndex) {

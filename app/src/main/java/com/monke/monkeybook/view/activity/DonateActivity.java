@@ -50,6 +50,7 @@ public class DonateActivity extends MBaseActivity {
 
     public static void startThis(Context context) {
         Intent intent = new Intent(context, DonateActivity.class);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         context.startActivity(intent);
     }
 
@@ -83,37 +84,37 @@ public class DonateActivity extends MBaseActivity {
     @Override
     protected void bindEvent() {
         vwZfbTz.setOnClickListener(view -> Donate.aliDonate(this));
-        vwZfbHb.setOnClickListener(view -> openIntent(Intent.ACTION_VIEW, "https://gedoor.github.io/MyBookshelf/zfbhbrwm.png"));
-        vwZfbRwm.setOnClickListener(view -> openIntent(Intent.ACTION_VIEW, "https://gedoor.github.io/MyBookshelf/zfbskrwm.jpg"));
-        vwWxRwm.setOnClickListener(view -> openIntent(Intent.ACTION_VIEW, "https://gedoor.github.io/MyBookshelf/wxskrwm.jpg"));
-        vwQqRwm.setOnClickListener(view -> openIntent(Intent.ACTION_VIEW, "https://gedoor.github.io/MyBookshelf/qqskrwm.jpg"));
-        vwZfbHbSsm.setOnClickListener(view -> {
-            ClipboardManager clipboard = (ClipboardManager) this.getSystemService(Context.CLIPBOARD_SERVICE);
-            ClipData clipData = ClipData.newPlainText(null, "537954522");
-            if (clipboard != null) {
-                clipboard.setPrimaryClip(clipData);
-                Toast.makeText(this, "隐藏书源已开启\n红包码已复制\n支付宝首页搜索“537954522” 立即领红包", Toast.LENGTH_SHORT).show();
-            }
-            openZfb();
-        });
+        vwZfbHb.setOnClickListener(view -> openActionViewIntent("https://gedoor.github.io/MyBookshelf/zfbhbrwm.png"));
+        vwZfbRwm.setOnClickListener(view -> openActionViewIntent("https://gedoor.github.io/MyBookshelf/zfbskrwm.jpg"));
+        vwWxRwm.setOnClickListener(view -> openActionViewIntent("https://gedoor.github.io/MyBookshelf/wxskrwm.jpg"));
+        vwQqRwm.setOnClickListener(view -> openActionViewIntent("https://gedoor.github.io/MyBookshelf/qqskrwm.jpg"));
+        vwZfbHbSsm.setOnClickListener(view -> getZfbHb(this));
     }
 
-    private void openZfb() {
+    public static void getZfbHb(Context context) {
+        ClipboardManager clipboard = (ClipboardManager) context.getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipData clipData = ClipData.newPlainText(null, "537954522");
+        if (clipboard != null) {
+            clipboard.setPrimaryClip(clipData);
+            Toast.makeText(context, "隐藏书源已开启\n红包码已复制\n支付宝首页搜索“537954522” 立即领红包", Toast.LENGTH_LONG).show();
+        }
         try {
-            PackageManager packageManager = this.getApplicationContext().getPackageManager();
+            PackageManager packageManager = context.getApplicationContext().getPackageManager();
             Intent intent = packageManager.getLaunchIntentForPackage("com.eg.android.AlipayGphone");
-            startActivity(intent);
+            assert intent != null;
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
         } catch (Exception e) {
             e.printStackTrace();
         } finally {
-            ACache.get(this).put("getZfbHb", "True", 3 * ACache.TIME_DAY);
+            ACache.get(context).put("getZfbHb", "True", 3 * ACache.TIME_DAY);
             RxBus.get().post(RxBusTag.GET_ZFB_Hb, true);
         }
     }
 
-    private void openIntent(String intentName, String address) {
+    private void openActionViewIntent(String address) {
         try {
-            Intent intent = new Intent(intentName);
+            Intent intent = new Intent(Intent.ACTION_VIEW);
             intent.setData(Uri.parse(address));
             startActivity(intent);
         } catch (Exception e) {

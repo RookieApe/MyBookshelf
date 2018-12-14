@@ -12,7 +12,7 @@ import android.widget.CheckBox;
 
 import com.monke.monkeybook.R;
 import com.monke.monkeybook.base.BaseTabActivity;
-import com.monke.monkeybook.presenter.ImportBookPresenterImpl;
+import com.monke.monkeybook.presenter.ImportBookPresenter;
 import com.monke.monkeybook.presenter.contract.ImportBookContract;
 import com.monke.monkeybook.view.fragment.BaseFileFragment;
 import com.monke.monkeybook.view.fragment.FileCategoryFragment;
@@ -27,9 +27,8 @@ import butterknife.ButterKnife;
 
 
 /**
- * Created by newbiechen on 17-5-27.
+ * 导入本地书籍
  */
-
 public class ImportBookActivity extends BaseTabActivity<ImportBookContract.Presenter> implements ImportBookContract.View {
     private static final String TAG = "ImportBookActivity";
 
@@ -67,7 +66,7 @@ public class ImportBookActivity extends BaseTabActivity<ImportBookContract.Prese
 
     @Override
     protected ImportBookContract.Presenter initInjector() {
-        return new ImportBookPresenterImpl();
+        return new ImportBookPresenter();
     }
 
     @Override
@@ -85,14 +84,14 @@ public class ImportBookActivity extends BaseTabActivity<ImportBookContract.Prese
 
     @Override
     protected List<Fragment> createTabFragments() {
-        mLocalFragment = new LocalBookFragment();
         mCategoryFragment = new FileCategoryFragment();
-        return Arrays.asList(mLocalFragment, mCategoryFragment);
+        mLocalFragment = new LocalBookFragment();
+        return Arrays.asList(mCategoryFragment, mLocalFragment);
     }
 
     @Override
     protected List<String> createTabTitles() {
-        return Arrays.asList("智能导入", "手机目录");
+        return Arrays.asList("手机目录", "智能导入");
     }
 
     @Override
@@ -115,11 +114,7 @@ public class ImportBookActivity extends BaseTabActivity<ImportBookContract.Prese
 
             @Override
             public void onPageSelected(int position) {
-                if (position == 0) {
-                    mCurFragment = mLocalFragment;
-                } else {
-                    mCurFragment = mCategoryFragment;
-                }
+                mCurFragment = (BaseFileFragment) mFragmentList.get(position);
                 //改变菜单状态
                 changeMenuStatus();
             }
@@ -155,15 +150,14 @@ public class ImportBookActivity extends BaseTabActivity<ImportBookContract.Prese
                             .show();
                 }
         );
-
-        mLocalFragment.setOnFileCheckedListener(mListener);
         mCategoryFragment.setOnFileCheckedListener(mListener);
+        mLocalFragment.setOnFileCheckedListener(mListener);
     }
 
     @Override
     protected void firstRequest() {
         super.firstRequest();
-        mCurFragment = mLocalFragment;
+        mCurFragment = (BaseFileFragment) mFragmentList.get(0);
     }
 
     //设置ToolBar

@@ -15,18 +15,6 @@ public interface MainContract {
         void dismissHUD();
 
         /**
-         * 刷新错误
-         *
-         * @param error 错误
-         */
-        void refreshError(String error);
-
-        /**
-         * 显示等待框
-         */
-        void showLoading(String msg);
-
-        /**
          * 恢复数据
          */
         void onRestore(String msg);
@@ -36,6 +24,8 @@ public interface MainContract {
         void toast(String msg);
 
         void toast(int strId);
+
+        int getGroup();
     }
 
     interface Presenter extends IPresenter {
@@ -47,8 +37,6 @@ public interface MainContract {
         void addBookUrl(String bookUrl);
 
         void clearBookshelf();
-
-        void resetVolume();
     }
 
 }

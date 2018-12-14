@@ -18,7 +18,7 @@
 
         <android.support.v7.widget.Toolbar
             android:id="@+id/toolbar"
-            style="@style/NopaddingToolbar"
+            style="@style/NoPaddingToolbar"
             android:layout_width="match_parent"
             android:layout_height="?attr/actionBarSize"
             android:background="?attr/colorPrimary"
@@ -31,8 +31,6 @@
                 android:id="@+id/card_search"
                 android:layout_width="match_parent"
                 android:layout_height="30dp"
-                android:clickable="true"
-                android:focusable="true"
                 app:cardBackgroundColor="@color/background_card"
                 app:cardElevation="0dp">
 
@@ -52,7 +50,9 @@
             android:layout_height="32dp"
             app:tabBackground="?attr/colorPrimary"
             app:tabGravity="fill"
-            app:tabIndicatorColor="@color/darker_gray"
+            app:tabIndicatorGravity="bottom"
+            app:tabIndicatorFullWidth="false"
+            app:tabIndicatorColor="@color/colorAccent"
             app:tabMode="fixed" />
     </android.support.design.widget.AppBarLayout>
 

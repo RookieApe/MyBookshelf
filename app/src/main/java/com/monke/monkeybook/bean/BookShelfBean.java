@@ -75,14 +75,14 @@ public class BookShelfBean implements Parcelable, Cloneable {
         lastChapterName = in.readString();
         chapterListSize = in.readInt();
         customCoverPath = in.readString();
-        allowUpdate = in.readByte()!=0 && !tag.equals(LOCAL_TAG);
+        allowUpdate = in.readByte() != 0 && !tag.equals(LOCAL_TAG);
     }
 
     @Generated(hash = 1626436040)
     public BookShelfBean(String noteUrl, Integer durChapter, Integer durChapterPage, Long finalDate,
-            Boolean hasUpdate, Integer newChapters, String tag, Integer serialNumber,
-            Long finalRefreshData, Integer group, String durChapterName, String lastChapterName,
-            Integer chapterListSize, String customCoverPath, Boolean allowUpdate) {
+                         Boolean hasUpdate, Integer newChapters, String tag, Integer serialNumber,
+                         Long finalRefreshData, Integer group, String durChapterName, String lastChapterName,
+                         Integer chapterListSize, String customCoverPath, Boolean allowUpdate) {
         this.noteUrl = noteUrl;
         this.durChapter = durChapter;
         this.durChapterPage = durChapterPage;
@@ -130,6 +130,31 @@ public class BookShelfBean implements Parcelable, Cloneable {
         bookShelfBean.tag = tag;
         bookShelfBean.bookInfoBean = (BookInfoBean) bookInfoBean.clone();
         return bookShelfBean;
+    }
+
+
+    public ChapterListBean getChapter(int index) {
+        if (realChapterListEmpty() || index < 0) {
+            ChapterListBean chapterListBean = new ChapterListBean();
+            chapterListBean.setDurChapterName("暂无");
+            chapterListBean.setDurChapterUrl("暂无");
+            return chapterListBean;
+        } else if (index < getChapterList().size()) {
+            return getChapterList().get(index);
+        } else {
+            durChapter = getChapterList().size() - 1;
+            return getChapterList().get(durChapter);
+        }
+    }
+
+    public BookmarkBean getBookmark(int index) {
+        if (realBookmarkListEmpty() || index < 0) {
+            return null;
+        } else if (index < getBookmarkList().size()) {
+            return getBookmarkList().get(index);
+        } else {
+            return getBookmarkList().get(getChapterList().size() - 1);
+        }
     }
 
     public String getNoteUrl() {
@@ -264,12 +289,8 @@ public class BookShelfBean implements Parcelable, Cloneable {
     }
 
     public void upDurChapterName() {
-        if (getChapterListSize() > 0) {
-            if (durChapter < getChapterListSize()) {
-                durChapterName = getChapterList().get(durChapter).getDurChapterName();
-            } else {
-                durChapterName = getChapterList().get(getChapterListSize() - 1).getDurChapterName();
-            }
+        if (getChapterList().size() > durChapter) {
+            durChapterName = getChapterList().get(durChapter).getDurChapterName();
         }
     }
 
@@ -282,13 +303,21 @@ public class BookShelfBean implements Parcelable, Cloneable {
     }
 
     public void upLastChapterName() {
-        if (getChapterListSize() > 0) {
+        if (getChapterList().size() > 0) {
             lastChapterName = getChapterList().get(getChapterListSize() - 1).getDurChapterName();
         }
     }
 
-    public Integer getChapterListSize() {
-        return this.chapterListSize == null ? 0 : this.chapterListSize;
+    public int getUnreadChapterNum() {
+        int num = getChapterListSize() - getDurChapter() - 1;
+        return num < 0 ? 0 : num;
+    }
+
+    public int getChapterListSize() {
+        if (getChapterList().size() == 0) {
+            return this.chapterListSize == null ? 0 : this.chapterListSize;
+        }
+        return getChapterList().size();
     }
 
     public void setChapterListSize(Integer chapterListSize) {
@@ -318,4 +347,18 @@ public class BookShelfBean implements Parcelable, Cloneable {
     public void setChapterList(List<ChapterListBean> chapterList) {
         this.bookInfoBean.setChapterList(chapterList);
     }
+
+    public boolean realBookmarkListEmpty() {
+        return getBookmarkList().isEmpty();
+    }
+
+    public List<BookmarkBean> getBookmarkList() {
+        return this.bookInfoBean.getBookmarkList();
+    }
+
+    public int getBookmarkListSize() {
+        return getBookmarkList().size();
+    }
+
+
 }

@@ -2,6 +2,7 @@ package com.monke.monkeybook.view.activity;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
@@ -29,11 +30,11 @@ import com.monke.monkeybook.help.ACache;
 import com.monke.monkeybook.help.MyItemTouchHelpCallback;
 import com.monke.monkeybook.help.RxBusTag;
 import com.monke.monkeybook.model.BookSourceManager;
-import com.monke.monkeybook.presenter.BookSourcePresenterImpl;
+import com.monke.monkeybook.presenter.BookSourcePresenter;
 import com.monke.monkeybook.presenter.contract.BookSourceContract;
 import com.monke.monkeybook.utils.FileUtil;
 import com.monke.monkeybook.view.adapter.BookSourceAdapter;
-import com.monke.monkeybook.widget.modialog.MoProgressHUD;
+import com.monke.monkeybook.widget.modialog.MoDialogHUD;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -44,13 +45,14 @@ import cn.qqtheme.framework.picker.FilePicker;
 import pub.devrel.easypermissions.AfterPermissionGranted;
 import pub.devrel.easypermissions.EasyPermissions;
 
+import static com.monke.monkeybook.view.activity.SourceEditActivity.EDIT_SOURCE;
+
 /**
  * Created by GKF on 2017/12/16.
  * 书源管理
  */
 
 public class BookSourceActivity extends MBaseActivity<BookSourceContract.Presenter> implements BookSourceContract.View {
-    public static final int EDIT_SOURCE = 101;
     private final int IMPORT_SOURCE = 102;
 
     @BindView(R.id.toolbar)
@@ -62,11 +64,13 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
     @BindView(R.id.searchView)
     SearchView searchView;
 
+    private MyItemTouchHelpCallback itemTouchHelpCallback;
     private boolean selectAll = true;
     private MenuItem groupItem;
     private SubMenu groupMenu;
+    private SubMenu sortMenu;
     private BookSourceAdapter adapter;
-    private MoProgressHUD moProgressHUD;
+    private MoDialogHUD moDialogHUD;
     private SearchView.SearchAutoComplete mSearchAutoComplete;
     private boolean isSearch;
 
@@ -76,7 +80,7 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
 
     @Override
     protected BookSourceContract.Presenter initInjector() {
-        return new BookSourcePresenterImpl();
+        return new BookSourcePresenter();
     }
 
     @Override
@@ -86,7 +90,11 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
 
     @Override
     protected void onCreateActivity() {
-        setContentView(R.layout.activity_recycler_serach_vew);
+        setContentView(R.layout.activity_book_source);
+        ButterKnife.bind(this);
+        this.setSupportActionBar(toolbar);
+        setupActionBar();
+        moDialogHUD = new MoDialogHUD(this);
     }
 
     @Override
@@ -107,16 +115,20 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
 
     @Override
     protected void bindView() {
-        ButterKnife.bind(this);
-        this.setSupportActionBar(toolbar);
-        setupActionBar();
+        super.bindView();
         initSearchView();
         initRecyclerView();
-        moProgressHUD = new MoProgressHUD(this);
+    }
+
+    @Override
+    protected void firstRequest() {
+        super.firstRequest();
+        refreshBookSource();
     }
 
     private void initSearchView() {
         mSearchAutoComplete = searchView.findViewById(R.id.search_src_text);
+        mSearchAutoComplete.setTextSize(16);
         searchView.setQueryHint(getString(R.string.search_book_source));
         searchView.onActionViewExpanded();
         searchView.clearFocus();
@@ -139,12 +151,23 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
         recyclerView.setLayoutManager(new LinearLayoutManager(this));
         adapter = new BookSourceAdapter(this);
         recyclerView.setAdapter(adapter);
-        adapter.resetDataS(BookSourceManager.getAllBookSource());
-        MyItemTouchHelpCallback itemTouchHelpCallback = new MyItemTouchHelpCallback();
+        itemTouchHelpCallback = new MyItemTouchHelpCallback();
         itemTouchHelpCallback.setOnItemTouchCallbackListener(adapter.getItemTouchCallbackListener());
-        itemTouchHelpCallback.setDragEnable(true);
         ItemTouchHelper itemTouchHelper = new ItemTouchHelper(itemTouchHelpCallback);
         itemTouchHelper.attachToRecyclerView(recyclerView);
+        setDragEnable(preferences.getInt("SourceSort", 0));
+    }
+
+    private void setDragEnable(int sort) {
+        if (itemTouchHelpCallback == null) {
+            return;
+        }
+        adapter.setSort(sort);
+        if (sort == 0) {
+            itemTouchHelpCallback.setDragEnable(true);
+        } else {
+            itemTouchHelpCallback.setDragEnable(false);
+        }
     }
 
     public void upDateSelectAll() {
@@ -186,7 +209,7 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
                     .whereOr(BookSourceBeanDao.Properties.BookSourceName.like(term),
                             BookSourceBeanDao.Properties.BookSourceGroup.like(term),
                             BookSourceBeanDao.Properties.BookSourceUrl.like(term))
-                    .orderRaw("-WEIGHT ASC")
+                    .orderRaw(BookSourceManager.getBookSourceSort())
                     .orderAsc(BookSourceBeanDao.Properties.SerialNumber)
                     .list();
             adapter.resetDataS(sourceBeanList);
@@ -227,7 +250,9 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
     public boolean onPrepareOptionsMenu(Menu menu) {
         groupItem = menu.findItem(R.id.action_group);
         groupMenu = groupItem.getSubMenu();
+        sortMenu = menu.findItem(R.id.action_sort).getSubMenu();
         upGroupMenu();
+        upSortMenu();
         return super.onPrepareOptionsMenu(menu);
     }
 
@@ -246,14 +271,7 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
                 selectBookSourceFile();
                 break;
             case R.id.action_import_book_source_onLine:
-                String cacheUrl = ACache.get(this).getAsString("sourceUrl");
-                moProgressHUD.showInputBox("输入书源网址",
-                        TextUtils.isEmpty(cacheUrl) ? getString(R.string.default_source_url) : cacheUrl,
-                        new String[]{getString(R.string.default_source_url)},
-                        inputText -> {
-                            ACache.get(this).put("sourceUrl", inputText);
-                            mPresenter.importBookSource(inputText);
-                        });
+                importBookSourceOnLine();
                 break;
             case R.id.action_revert_selection:
                 revertSelection();
@@ -266,6 +284,15 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
                 break;
             case R.id.action_check_book_source:
                 mPresenter.checkBookSource();
+                break;
+            case R.id.sort_manual:
+                upSourceSort(0);
+                break;
+            case R.id.sort_auto:
+                upSourceSort(1);
+                break;
+            case R.id.sort_pin_yin:
+                upSourceSort(2);
                 break;
             case android.R.id.home:
                 finish();
@@ -290,6 +317,23 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
         }
     }
 
+    private void upSortMenu() {
+        sortMenu.getItem(0).setChecked(false);
+        sortMenu.getItem(1).setChecked(false);
+        sortMenu.getItem(2).setChecked(false);
+        sortMenu.getItem(preferences.getInt("SourceSort", 0)).setChecked(true);
+    }
+
+    private void upSourceSort(int sort) {
+        SharedPreferences.Editor editor = preferences.edit();
+        editor.putInt("SourceSort", sort);
+        editor.apply();
+        upSortMenu();
+        setDragEnable(sort);
+        BookSourceManager.refreshBookSource();
+        refreshBookSource();
+    }
+
     private void addBookSource() {
         Intent intent = new Intent(this, SourceEditActivity.class);
         startActivityForResult(intent, EDIT_SOURCE);
@@ -312,6 +356,17 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
             EasyPermissions.requestPermissions(this, getString(R.string.import_book_source),
                     MApplication.RESULT__PERMS, MApplication.PerList);
         }
+    }
+
+    private void importBookSourceOnLine() {
+        String cacheUrl = ACache.get(this).getAsString("sourceUrl");
+        moDialogHUD.showInputBox("输入书源网址",
+                TextUtils.isEmpty(cacheUrl) ? getString(R.string.default_source_url) : cacheUrl,
+                new String[]{getString(R.string.default_source_url)},
+                inputText -> {
+                    ACache.get(this).put("sourceUrl", inputText);
+                    mPresenter.importBookSource(inputText);
+                });
     }
 
     private void selectFileSys() {

@@ -8,6 +8,7 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.hwangjr.rxbus.RxBus;
 import com.monke.basemvplib.BaseModelImpl;
+import com.monke.monkeybook.MApplication;
 import com.monke.monkeybook.R;
 import com.monke.monkeybook.base.MBaseActivity;
 import com.monke.monkeybook.base.observer.SimpleObserver;
@@ -45,7 +46,7 @@ public class BookSourceManager extends BaseModelImpl {
         if (selectedBookSource == null) {
             selectedBookSource = DbHelper.getInstance().getmDaoSession().getBookSourceBeanDao().queryBuilder()
                     .where(BookSourceBeanDao.Properties.Enable.eq(true))
-                    .orderRaw("-WEIGHT ASC")
+                    .orderRaw(BookSourceBeanDao.Properties.Weight.columnName + " DESC")
                     .orderAsc(BookSourceBeanDao.Properties.SerialNumber)
                     .list();
         }
@@ -55,7 +56,7 @@ public class BookSourceManager extends BaseModelImpl {
     public static List<BookSourceBean> getAllBookSource() {
         if (allBookSource == null) {
             allBookSource = DbHelper.getInstance().getmDaoSession().getBookSourceBeanDao().queryBuilder()
-                    .orderRaw("-WEIGHT ASC")
+                    .orderRaw(getBookSourceSort())
                     .orderAsc(BookSourceBeanDao.Properties.SerialNumber)
                     .list();
             upGroupList();
@@ -63,17 +64,45 @@ public class BookSourceManager extends BaseModelImpl {
         return allBookSource;
     }
 
+    public static BookSourceBean getBookSourceByUrl(String url) {
+        BookSourceBean sourceBean = null;
+        for (BookSourceBean bookSourceBean : getAllBookSource()) {
+            if (bookSourceBean.getBookSourceUrl().equals(url)) {
+                sourceBean = bookSourceBean;
+                break;
+            }
+        }
+        return sourceBean;
+    }
+
+    public static void removeBookSource(BookSourceBean sourceBean) {
+        if (sourceBean == null) return;
+        DbHelper.getInstance().getmDaoSession().getBookSourceBeanDao().delete(sourceBean);
+        refreshBookSource();
+    }
+
     public static void refreshBookSource() {
         allBookSource = DbHelper.getInstance().getmDaoSession().getBookSourceBeanDao().queryBuilder()
-                .orderRaw("-WEIGHT ASC")
+                .orderRaw(getBookSourceSort())
                 .orderAsc(BookSourceBeanDao.Properties.SerialNumber)
                 .list();
         selectedBookSource = DbHelper.getInstance().getmDaoSession().getBookSourceBeanDao().queryBuilder()
                 .where(BookSourceBeanDao.Properties.Enable.eq(true))
-                .orderRaw("-WEIGHT ASC")
+                .orderRaw(BookSourceBeanDao.Properties.Weight.columnName + " DESC")
                 .orderAsc(BookSourceBeanDao.Properties.SerialNumber)
                 .list();
         upGroupList();
+    }
+
+    public static String getBookSourceSort() {
+        switch (MApplication.getInstance().getConfigPreferences().getInt("SourceSort", 0)) {
+            case 1:
+                return BookSourceBeanDao.Properties.Weight.columnName + " DESC";
+            case 2:
+                return BookSourceBeanDao.Properties.BookSourceName.columnName + " COLLATE LOCALIZED ASC";
+            default:
+                return BookSourceBeanDao.Properties.SerialNumber.columnName + " ASC";
+        }
     }
 
     public static void addBookSource(List<BookSourceBean> bookSourceBeans) {
@@ -93,6 +122,8 @@ public class BookSourceManager extends BaseModelImpl {
         if (temp != null) {
             bookSourceBean.setSerialNumber(temp.getSerialNumber());
             bookSourceBean.setEnable(temp.getEnable());
+        } else {
+            bookSourceBean.setEnable(true);
         }
         if (bookSourceBean.getSerialNumber() == 0) {
             bookSourceBean.setSerialNumber(allBookSource.size() + 1);

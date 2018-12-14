@@ -3,6 +3,7 @@ package com.monke.monkeybook.help;
 import android.annotation.SuppressLint;
 import android.text.TextUtils;
 
+import com.monke.monkeybook.bean.BaseChapterBean;
 import com.monke.monkeybook.bean.BookInfoBean;
 import com.monke.monkeybook.bean.BookShelfBean;
 import com.monke.monkeybook.bean.BookSourceBean;
@@ -31,6 +32,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -74,6 +76,10 @@ public class BookshelfHelp {
         return formatFolderName(book.getName() + "-" + book.getTag());
     }
 
+    public static String getCacheFileName(int chapterIndex, String chapterName) {
+        return formatFileName(chapterIndex, chapterName);
+    }
+
     public static void setChapterIsCached(String bookName, ChapterListBean chapter, boolean cached) {
         setChapterIsCached(bookName + "-" + chapter.getTag(), chapter.getDurChapterIndex(), cached);
     }
@@ -100,7 +106,7 @@ public class BookshelfHelp {
         return cached;
     }
 
-    public static boolean isChapterCached(BookInfoBean book, ChapterListBean chapter) {
+    public static boolean isChapterCached(BookInfoBean book, BaseChapterBean chapter) {
         final String path = getCachePathName(book);
         return chapterCaches.containsKey(path) && chapterCaches.get(path).contains(chapter.getDurChapterIndex());
     }
@@ -264,7 +270,7 @@ public class BookshelfHelp {
     public static void removeFromBookShelf(BookShelfBean bookShelfBean, boolean keepCaches) {
         DbHelper.getInstance().getmDaoSession().getBookShelfBeanDao().deleteByKey(bookShelfBean.getNoteUrl());
         DbHelper.getInstance().getmDaoSession().getBookInfoBeanDao().deleteByKey(bookShelfBean.getBookInfoBean().getNoteUrl());
-        DbHelper.getInstance().getmDaoSession().getChapterListBeanDao().deleteInTx(bookShelfBean.getChapterList());
+        delChapterList(bookShelfBean.getNoteUrl());
         if (!keepCaches) {
             String bookName = bookShelfBean.getBookInfoBean().getName();
             // 如果书架上有其他同名书籍，只删除本书源的缓存
@@ -345,6 +351,12 @@ public class BookshelfHelp {
                 .list();
     }
 
+    public static void delChapterList(String noteUrl) {
+        DbHelper.getInstance().getmDaoSession().getChapterListBeanDao().queryBuilder()
+                .where(ChapterListBeanDao.Properties.NoteUrl.eq(noteUrl))
+                .buildDelete().executeDeleteWithoutDetachingEntities();
+    }
+
     public static void saveBookmark(BookmarkBean bookmarkBean) {
         DbHelper.getInstance().getmDaoSession().getBookmarkBeanDao().insertOrReplace(bookmarkBean);
     }
@@ -367,10 +379,10 @@ public class BookshelfHelp {
 
     public static String getReadProgress(int durChapterIndex, int chapterAll, int durPageIndex, int durPageAll) {
         DecimalFormat df = new DecimalFormat("0.0%");
-        if (chapterAll == 0) {
+        if (chapterAll == 0 || (durPageAll == 0 && durChapterIndex == 0)) {
             return "0.0%";
         } else if (durPageAll == 0) {
-            return df.format(durChapterIndex * 1.0f / chapterAll);
+            return df.format((durChapterIndex + 1.0f) / chapterAll);
         }
         String percent = df.format(durChapterIndex * 1.0f / chapterAll + 1.0f / chapterAll * (durPageIndex + 1) / durPageAll);
         if (percent.equals("100.0%") && (durChapterIndex + 1 != chapterAll || durPageIndex + 1 != durPageAll)) {

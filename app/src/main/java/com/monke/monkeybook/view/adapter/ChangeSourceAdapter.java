@@ -11,6 +11,7 @@ import android.widget.TextView;
 
 import com.monke.monkeybook.R;
 import com.monke.monkeybook.bean.SearchBookBean;
+import com.monke.monkeybook.view.adapter.base.BaseListAdapter;
 import com.monke.monkeybook.widget.refreshview.RefreshRecyclerViewAdapter;
 
 import java.util.ArrayList;
@@ -25,7 +26,8 @@ import static android.text.TextUtils.isEmpty;
 
 public class ChangeSourceAdapter extends RefreshRecyclerViewAdapter {
     private List<SearchBookBean> searchBookBeans;
-    private OnItemClickListener mOnItemClickListener;
+    private BaseListAdapter.OnItemClickListener onItemClickListener;
+    private BaseListAdapter.OnItemLongClickListener onItemLongClickListener;
     private Context mContext;
 
     public ChangeSourceAdapter(Context context, Boolean needLoadMore) {
@@ -46,11 +48,15 @@ public class ChangeSourceAdapter extends RefreshRecyclerViewAdapter {
 
     public void reSetSourceAdapter() {
         searchBookBeans.clear();
-        notifyDataSetChanged();
+            notifyDataSetChanged();
     }
 
-    public void setOnItemClickListener(OnItemClickListener listener) {
-        this.mOnItemClickListener = listener;
+    public void setOnItemClickListener(BaseListAdapter.OnItemClickListener listener) {
+        this.onItemClickListener = listener;
+    }
+
+    public void setOnItemLongClickListener(BaseListAdapter.OnItemLongClickListener itemLongClickListener) {
+        this.onItemLongClickListener = itemLongClickListener;
     }
 
     public List<SearchBookBean> getSearchBookBeans() {
@@ -72,15 +78,21 @@ public class ChangeSourceAdapter extends RefreshRecyclerViewAdapter {
         } else {
             myViewHolder.tvLastChapter.setText(searchBookBeans.get(position).getLastChapter());
         }
-        if (searchBookBeans.get(position).getIsAdd()) {
+        if (searchBookBeans.get(position).getIsCurrentSource()) {
             myViewHolder.ivChecked.setVisibility(View.VISIBLE);
         } else {
             myViewHolder.ivChecked.setVisibility(View.INVISIBLE);
         }
         myViewHolder.llContent.setOnClickListener(view -> {
-            if (mOnItemClickListener != null) {
-                mOnItemClickListener.onItemClick(myViewHolder.llContent, position);
+            if (onItemClickListener != null) {
+                onItemClickListener.onItemClick(view, position);
             }
+        });
+        myViewHolder.llContent.setOnLongClickListener(view -> {
+            if (onItemLongClickListener != null) {
+                return onItemLongClickListener.onItemLongClick(view, position);
+            }
+            return true;
         });
     }
 
@@ -92,10 +104,6 @@ public class ChangeSourceAdapter extends RefreshRecyclerViewAdapter {
     @Override
     public int getICount() {
         return searchBookBeans.size();
-    }
-
-    public interface OnItemClickListener {
-        void onItemClick(View view, int index);
     }
 
     class MyViewHolder extends RecyclerView.ViewHolder {

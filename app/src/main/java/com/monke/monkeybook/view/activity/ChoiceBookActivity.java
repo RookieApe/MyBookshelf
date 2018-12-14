@@ -14,8 +14,8 @@ import android.widget.TextView;
 import com.monke.monkeybook.R;
 import com.monke.monkeybook.base.MBaseActivity;
 import com.monke.monkeybook.bean.SearchBookBean;
-import com.monke.monkeybook.presenter.BookDetailPresenterImpl;
-import com.monke.monkeybook.presenter.ChoiceBookPresenterImpl;
+import com.monke.monkeybook.presenter.BookDetailPresenter;
+import com.monke.monkeybook.presenter.ChoiceBookPresenter;
 import com.monke.monkeybook.presenter.contract.ChoiceBookContract;
 import com.monke.monkeybook.view.adapter.ChoiceBookAdapter;
 import com.monke.monkeybook.widget.refreshview.OnLoadMoreListener;
@@ -37,7 +37,7 @@ public class ChoiceBookActivity extends MBaseActivity<ChoiceBookContract.Present
 
     @Override
     protected ChoiceBookContract.Presenter initInjector() {
-        return new ChoiceBookPresenterImpl(getIntent());
+        return new ChoiceBookPresenter(getIntent());
     }
 
     @Override
@@ -113,7 +113,7 @@ public class ChoiceBookActivity extends MBaseActivity<ChoiceBookContract.Present
             @Override
             public void clickItem(View animView, int position, SearchBookBean searchBookBean) {
                 Intent intent = new Intent(ChoiceBookActivity.this, BookDetailActivity.class);
-                intent.putExtra("openFrom", BookDetailPresenterImpl.FROM_SEARCH);
+                intent.putExtra("openFrom", BookDetailPresenter.FROM_SEARCH);
                 intent.putExtra("data", searchBookBean);
                 startActivityByAnim(intent, android.R.anim.fade_in, android.R.anim.fade_out);
             }
@@ -205,7 +205,7 @@ public class ChoiceBookActivity extends MBaseActivity<ChoiceBookContract.Present
                 int startIndex = ((LinearLayoutManager) Objects.requireNonNull(rfRvSearchBooks.getRecyclerView().getLayoutManager())).findFirstVisibleItemPosition();
                 TextView tvAddShelf = rfRvSearchBooks.getRecyclerView().getChildAt(index - startIndex).findViewById(R.id.tv_add_shelf);
                 if (tvAddShelf != null) {
-                    if (searchBookAdapter.getSearchBooks().get(index).getIsAdd()) {
+                    if (searchBookAdapter.getSearchBooks().get(index).getIsCurrentSource()) {
                         tvAddShelf.setText("已添加");
                         tvAddShelf.setEnabled(false);
                     } else {

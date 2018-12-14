@@ -8,13 +8,16 @@ import android.app.NotificationManager;
 import android.content.Context;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
+import android.content.res.Resources;
 import android.os.Build;
 import android.support.annotation.RequiresApi;
 import android.text.TextUtils;
 
+import com.monke.monkeybook.help.AppFrontBackHelper;
 import com.monke.monkeybook.help.Constant;
 import com.monke.monkeybook.help.CrashHandler;
 import com.monke.monkeybook.help.FileHelp;
+import com.monke.monkeybook.model.UpLastChapterModel;
 
 import java.io.File;
 
@@ -29,7 +32,6 @@ public class MApplication extends Application {
     private static String versionName;
     private static int versionCode;
     private SharedPreferences configPreferences;
-    public static int VOLUME = -1;
 
     public static MApplication getInstance() {
         return instance;
@@ -41,6 +43,10 @@ public class MApplication extends Application {
 
     public static String getVersionName() {
         return versionName;
+    }
+
+    public static Resources getAppResources() {
+        return getInstance().getResources();
     }
 
     @Override
@@ -65,13 +71,27 @@ public class MApplication extends Application {
         if (TextUtils.isEmpty(downloadPath)) {
             setDownloadPath(FileHelp.getCachePath());
         }
+        AppFrontBackHelper frontBackHelper = new AppFrontBackHelper();
+        frontBackHelper.register(this, new AppFrontBackHelper.OnAppStatusListener() {
+            @Override
+            public void onFront() {
+
+            }
+
+            @Override
+            public void onBack() {
+                if (UpLastChapterModel.model != null) {
+                    UpLastChapterModel.model.onDestroy();
+                }
+            }
+        });
     }
 
     public void setDownloadPath(String downloadPath) {
         MApplication.downloadPath = downloadPath;
         Constant.BOOK_CACHE_PATH = MApplication.downloadPath + File.separator + "book_cache" + File.separator;
         SharedPreferences.Editor editor = configPreferences.edit();
-        editor.putString(getString(R.string.pk_download_path), FileHelp.getCachePath());
+        editor.putString(getString(R.string.pk_download_path), downloadPath);
         editor.apply();
     }
 
@@ -112,4 +132,5 @@ public class MApplication extends Application {
             notificationManager.createNotificationChannel(firstChannel);
         }
     }
+
 }

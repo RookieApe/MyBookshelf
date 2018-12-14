@@ -5,7 +5,14 @@
     <SwitchPreference
         android:defaultValue="false"
         android:key="@string/pk_ImmersionStatusBar"
-        android:title="@string/immersion_status_bar" />
+        android:title="@string/immersion_status_bar"
+        android:summary="@string/status_bar_immersion"/>
+
+    <SwitchPreference
+        android:defaultValue="false"
+        android:key="@string/pk_navigationBarColorChange"
+        android:title="@string/navigation_bar_color_change"
+        android:summary="@string/navigation_bar_color_change_s"/>
 
     <ListPreference
         android:defaultValue="0"
@@ -13,12 +20,6 @@
         android:entryValues="@array/bookshelf_px_value"
         android:key="@string/pk_bookshelf_px"
         android:title="@string/bookshelf_px" />
-
-    <SwitchPreference
-        android:defaultValue="false"
-        android:key="@string/pk_bookshelf_anim"
-        android:summary="@string/s_bookshelf_anim"
-        android:title="@string/t_bookshelf_anim" />
 
     <SwitchPreference
         android:defaultValue="true"

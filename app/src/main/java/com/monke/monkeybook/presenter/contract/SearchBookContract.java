@@ -13,10 +13,6 @@ import java.util.List;
 public interface SearchBookContract {
     interface Presenter extends IPresenter {
 
-        Boolean getHasSearch();
-
-        void setHasSearch(Boolean hasSearch);
-
         void insertSearchHistory();
 
         void querySearchHistory(String content);
@@ -32,8 +28,6 @@ public interface SearchBookContract {
         void setUseMy716(boolean useMy716);
 
         void toSearchBooks(String key, Boolean fromError);
-
-        void addBookToShelf(final SearchBookBean searchBookBean);
 
         void stopSearch();
     }
@@ -83,24 +77,9 @@ public interface SearchBookContract {
         EditText getEdtContent();
 
         /**
-         * 添加书籍失败
-         */
-        void addBookShelfFailed(String massage);
-
-        /**
          * @return SearchBookAdapter
          */
         SearchBookAdapter getSearchBookAdapter();
-
-        /**
-         * @param index
-         */
-        void updateSearchItem(int index);
-
-        /**
-         * 判断书籍是否已经在书架上
-         */
-        Boolean checkIsExist(SearchBookBean searchBookBean);
 
         void upMenu();
     }

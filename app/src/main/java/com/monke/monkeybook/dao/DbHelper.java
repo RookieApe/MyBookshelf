@@ -8,12 +8,42 @@ import com.github.yuweiguocn.library.greendao.MigrationHelper;
 import com.monke.monkeybook.MApplication;
 
 import org.greenrobot.greendao.database.Database;
+import java.util.Locale;
 
 public class DbHelper {
+    private static DbHelper instance;
     private DaoOpenHelper mHelper;
     private SQLiteDatabase db;
     private DaoMaster mDaoMaster;
     private DaoSession mDaoSession;
+
+    private DbHelper(){
+        mHelper = new DaoOpenHelper(MApplication.getInstance(), "monkebook_db", null);
+        db = mHelper.getWritableDatabase();
+        db.setLocale(Locale.CHINESE);
+        // 注意：该数据库连接属于 DaoMaster，所以多个 Session 指的是相同的数据库连接。
+        mDaoMaster = new DaoMaster(db);
+        mDaoSession = mDaoMaster.newSession();
+    }
+
+    public static DbHelper getInstance(){
+        if(null == instance){
+            synchronized (DbHelper.class){
+                if(null == instance){
+                    instance = new DbHelper();
+                }
+            }
+        }
+        return instance;
+    }
+
+    public DaoSession getmDaoSession() {
+        return mDaoSession;
+    }
+
+    public SQLiteDatabase getDb() {
+        return db;
+    }
 
     public class DaoOpenHelper extends DaoMaster.OpenHelper {
         DaoOpenHelper(Context context, String name, SQLiteDatabase.CursorFactory factory) {
@@ -33,39 +63,10 @@ public class DbHelper {
                         }
                     },
                     BookShelfBeanDao.class, BookInfoBeanDao.class, ChapterListBeanDao.class,
-                    DownloadChapterBeanDao.class, SearchHistoryBeanDao.class, BookSourceBeanDao.class,
+                    SearchHistoryBeanDao.class, BookSourceBeanDao.class,
                     ReplaceRuleBeanDao.class, BookmarkBeanDao.class
             );
         }
-    }
-
-    private DbHelper(){
-        mHelper = new DaoOpenHelper(MApplication.getInstance(), "monkebook_db", null);
-        db = mHelper.getWritableDatabase();
-        // 注意：该数据库连接属于 DaoMaster，所以多个 Session 指的是相同的数据库连接。
-        mDaoMaster = new DaoMaster(db);
-        mDaoSession = mDaoMaster.newSession();
-    }
-
-    private static DbHelper instance;
-
-    public static DbHelper getInstance(){
-        if(null == instance){
-            synchronized (DbHelper.class){
-                if(null == instance){
-                    instance = new DbHelper();
-                }
-            }
-        }
-        return instance;
-    }
-
-    public DaoSession getmDaoSession() {
-        return mDaoSession;
-    }
-
-    public SQLiteDatabase getDb() {
-        return db;
     }
 
 }
