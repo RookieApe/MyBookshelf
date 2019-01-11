@@ -2,16 +2,9 @@ package com.kunfei.bookshelf.view.fragment;
 
 import android.graphics.PorterDuff;
 import android.os.Environment;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
 import android.widget.TextView;
 
 import com.kunfei.basemvplib.impl.IPresenter;
-import com.kunfei.bookshelf.help.BookshelfHelp;
-import com.kunfei.bookshelf.help.FileHelp;
-import com.kunfei.bookshelf.utils.FileStack;
-import com.kunfei.bookshelf.widget.itemdecoration.DividerItemDecoration;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.help.BookshelfHelp;
 import com.kunfei.bookshelf.help.FileHelp;
@@ -31,6 +24,9 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
 
+import androidx.appcompat.app.AlertDialog;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.Unbinder;
@@ -129,7 +125,7 @@ public class FileCategoryFragment extends BaseFileFragment {
             if (getContext() != null) {
                 List<String> list = FileUtil.getStorageData(getContext());
                 if (list != null) {
-                    String[] filePathS = list.toArray(new String[list.size()]);
+                    String[] filePathS = list.toArray(new String[0]);
                     AlertDialog dialog = new AlertDialog.Builder(getContext())
                             .setTitle("选择SD卡")
                             .setSingleChoiceItems(filePathS, 0, (dialogInterface, i) -> {

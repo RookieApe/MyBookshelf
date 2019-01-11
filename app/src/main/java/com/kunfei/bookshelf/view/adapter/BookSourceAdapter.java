@@ -1,7 +1,5 @@
 package com.kunfei.bookshelf.view.adapter;
 
-import android.support.annotation.NonNull;
-import android.support.v7.widget.RecyclerView;
 import android.text.TextUtils;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -9,9 +7,6 @@ import android.view.ViewGroup;
 import android.widget.CheckBox;
 import android.widget.ImageView;
 
-import com.kunfei.bookshelf.help.BookshelfHelp;
-import com.kunfei.bookshelf.model.BookSourceManager;
-import com.kunfei.bookshelf.view.activity.SourceEditActivity;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.bean.BookSourceBean;
 import com.kunfei.bookshelf.help.BookshelfHelp;
@@ -23,6 +18,9 @@ import com.kunfei.bookshelf.view.activity.SourceEditActivity;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+
+import androidx.annotation.NonNull;
+import androidx.recyclerview.widget.RecyclerView;
 
 /**
  * Created by GKF on 2017/12/22.

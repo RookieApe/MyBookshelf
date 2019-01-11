@@ -1,7 +1,6 @@
 //Copyright (c) 2017. 章钦豪. All rights reserved.
 package com.kunfei.bookshelf.presenter;
 
-import android.support.annotation.NonNull;
 import android.text.TextUtils;
 
 import com.hwangjr.rxbus.RxBus;
@@ -10,7 +9,6 @@ import com.hwangjr.rxbus.annotation.Tag;
 import com.hwangjr.rxbus.thread.EventThread;
 import com.kunfei.basemvplib.BasePresenterImpl;
 import com.kunfei.basemvplib.impl.IView;
-import com.kunfei.bookshelf.help.BookshelfHelp;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.base.observer.SimpleObserver;
 import com.kunfei.bookshelf.bean.BookInfoBean;
@@ -27,6 +25,7 @@ import com.kunfei.bookshelf.presenter.contract.MainContract;
 
 import java.net.URL;
 
+import androidx.annotation.NonNull;
 import io.reactivex.Observable;
 import io.reactivex.ObservableOnSubscribe;
 import io.reactivex.android.schedulers.AndroidSchedulers;
@@ -191,7 +190,7 @@ public class MainPresenter extends BasePresenterImpl<MainContract.View> implemen
         mView.initImmersionBar();
     }
 
-    @Subscribe(thread = EventThread.MAIN_THREAD, tags = {@Tag(RxBusTag.UPDATE_PX)})
+    @Subscribe(thread = EventThread.MAIN_THREAD, tags = {@Tag(RxBusTag.RECREATE)})
     public void updatePx(Boolean px) {
         mView.recreate();
     }

@@ -5,41 +5,64 @@ import android.app.Activity;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
-import android.hardware.Camera;
+import android.graphics.Color;
+import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.design.widget.AppBarLayout;
-import android.support.design.widget.TextInputLayout;
-import android.support.v4.content.FileProvider;
-import android.support.v7.app.ActionBar;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.widget.AppCompatEditText;
-import android.support.v7.widget.Toolbar;
 import android.text.Editable;
 import android.text.TextUtils;
+import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
+import android.view.ViewTreeObserver;
+import android.widget.EditText;
 import android.widget.LinearLayout;
+import android.widget.PopupWindow;
+import android.widget.ScrollView;
 
+import com.google.android.material.appbar.AppBarLayout;
+import com.google.android.material.textfield.TextInputLayout;
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
-import com.google.zxing.integration.android.IntentIntegrator;
-import com.google.zxing.integration.android.IntentResult;
+import com.google.zxing.BarcodeFormat;
+import com.google.zxing.EncodeHintType;
+import com.google.zxing.MultiFormatWriter;
+import com.google.zxing.common.BitMatrix;
+import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
 import com.kunfei.bookshelf.BitIntentDataManager;
 import com.kunfei.bookshelf.BuildConfig;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.base.MBaseActivity;
+import com.kunfei.bookshelf.base.observer.SimpleObserver;
 import com.kunfei.bookshelf.bean.BookSourceBean;
+import com.kunfei.bookshelf.model.BookSourceManager;
 import com.kunfei.bookshelf.presenter.SourceEditPresenter;
 import com.kunfei.bookshelf.presenter.contract.SourceEditContract;
+import com.kunfei.bookshelf.utils.RxUtils;
+import com.kunfei.bookshelf.utils.ScreenUtils;
 import com.kunfei.bookshelf.utils.SoftInputUtil;
+import com.kunfei.bookshelf.utils.Theme.ThemeStore;
+import com.kunfei.bookshelf.view.popupwindow.KeyboardToolPop;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.Hashtable;
+import java.util.List;
 
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.widget.AppCompatEditText;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.FileProvider;
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import io.reactivex.Observable;
+import io.reactivex.Single;
+import io.reactivex.SingleObserver;
+import io.reactivex.SingleOnSubscribe;
+import io.reactivex.disposables.Disposable;
 
 import static android.text.TextUtils.isEmpty;
 
@@ -50,7 +73,7 @@ import static android.text.TextUtils.isEmpty;
 
 public class SourceEditActivity extends MBaseActivity<SourceEditContract.Presenter> implements SourceEditContract.View {
     public final static int EDIT_SOURCE = 1101;
-    private final int REQUEST_QR_IMAGE = 202;
+    private final int REQUEST_QR = 202;
 
     @BindView(R.id.action_bar)
     AppBarLayout actionBar;
@@ -110,10 +133,10 @@ public class SourceEditActivity extends MBaseActivity<SourceEditContract.Present
     AppCompatEditText tieRuleCoverUrl;
     @BindView(R.id.til_ruleCoverUrl)
     TextInputLayout tilRuleCoverUrl;
-    @BindView(R.id.tie_ruleChapterUrl)
-    AppCompatEditText tieRuleChapterUrl;
-    @BindView(R.id.til_ruleChapterUrl)
-    TextInputLayout tilRuleChapterUrl;
+    @BindView(R.id.tie_ruleChapterListUrl)
+    AppCompatEditText tieRuleChapterListUrl;
+    @BindView(R.id.til_ruleChapterListUrl)
+    TextInputLayout tilRuleChapterListUrl;
     @BindView(R.id.tie_ruleIntroduce)
     AppCompatEditText tieRuleIntroduce;
     @BindView(R.id.til_ruleIntroduce)
@@ -146,14 +169,10 @@ public class SourceEditActivity extends MBaseActivity<SourceEditContract.Present
     AppCompatEditText tieBookSourceGroup;
     @BindView(R.id.til_bookSourceGroup)
     TextInputLayout tilBookSourceGroup;
-    @BindView(R.id.tie_checkUrl)
-    AppCompatEditText tieCheckUrl;
-    @BindView(R.id.til_checkUrl)
-    TextInputLayout tilCheckUrl;
-    @BindView(R.id.tie_ruleChapterUrlNext)
-    AppCompatEditText tieRuleChapterUrlNext;
-    @BindView(R.id.til_ruleChapterUrlNext)
-    TextInputLayout tilRuleChapterUrlNext;
+    @BindView(R.id.tie_ruleChapterListUrlNext)
+    AppCompatEditText tieRuleChapterListUrlNext;
+    @BindView(R.id.til_ruleChapterListUrlNext)
+    TextInputLayout tilRuleChapterListUrlNext;
     @BindView(R.id.tie_ruleContentUrlNext)
     AppCompatEditText tieRuleContentUrlNext;
     @BindView(R.id.til_ruleContentUrlNext)
@@ -174,11 +193,15 @@ public class SourceEditActivity extends MBaseActivity<SourceEditContract.Present
     AppCompatEditText tieLoginUrl;
     @BindView(R.id.til_loginUrl)
     TextInputLayout tilLoginUrl;
+    @BindView(R.id.scrollView)
+    ScrollView scrollView;
 
     private BookSourceBean bookSourceBean;
     private int serialNumber;
     private boolean enable;
     private String title;
+    private PopupWindow mSoftKeyboardTool;
+    private boolean mIsSoftKeyBoardShowing = false;
 
     public static void startThis(Activity activity, BookSourceBean sourceBean) {
         Intent intent = new Intent(activity, SourceEditActivity.class);
@@ -218,6 +241,7 @@ public class SourceEditActivity extends MBaseActivity<SourceEditContract.Present
 
     @Override
     protected void onCreateActivity() {
+        getWindow().getDecorView().setBackgroundColor(ThemeStore.backgroundColor(this));
         setContentView(R.layout.activity_source_edit);
     }
 
@@ -245,23 +269,16 @@ public class SourceEditActivity extends MBaseActivity<SourceEditContract.Present
 
         setHint();
         setText(bookSourceBean);
+        mSoftKeyboardTool = new KeyboardToolPop(this, this::insertTextToEditText);
+        getWindow().getDecorView().getViewTreeObserver().addOnGlobalLayoutListener(new KeyboardOnGlobalChangeListener());
     }
 
-    private boolean saveBookSource() {
+    private boolean canSaveBookSource() {
         if (isEmpty(trim(tieBookSourceName.getText())) || isEmpty(trim(tieBookSourceUrl.getText()))) {
             toast("书源名称和URL不能为空", ERROR);
             return false;
         }
-        mPresenter.saveSource(getBookSource(), bookSourceBean);
         return true;
-    }
-
-    @Override
-    public void saveSuccess() {
-        bookSourceBean = getBookSource();
-        toast("保存成功");
-        setResult(RESULT_OK);
-        finish();
     }
 
     @Override
@@ -274,10 +291,8 @@ public class SourceEditActivity extends MBaseActivity<SourceEditContract.Present
     }
 
     private void scanBookSource() {
-        IntentIntegrator integrator = new IntentIntegrator(this);
-        integrator.setCameraId(Camera.CameraInfo.CAMERA_FACING_BACK);
-        integrator.setCaptureActivity(QRCodeScanActivity.class);
-        integrator.initiateScan();
+        Intent intent = new Intent(this, QRCodeScanActivity.class);
+        startActivityForResult(intent, REQUEST_QR);
     }
 
     private String trim(Editable editable) {
@@ -300,14 +315,13 @@ public class SourceEditActivity extends MBaseActivity<SourceEditContract.Present
         bookSourceBeanN.setBookSourceUrl(trim(tieBookSourceUrl.getText()));
         bookSourceBeanN.setLoginUrl(trim(tieLoginUrl.getText()));
         bookSourceBeanN.setBookSourceGroup(trim(tieBookSourceGroup.getText()));
-        bookSourceBeanN.setCheckUrl(trim(tieCheckUrl.getText()));
         bookSourceBeanN.setRuleBookAuthor(trim(tieRuleBookAuthor.getText()));
         bookSourceBeanN.setRuleBookContent(trim(tieRuleBookContent.getText()));
         bookSourceBeanN.setRuleBookName(trim(tieRuleBookName.getText()));
         bookSourceBeanN.setRuleChapterList(trim(tieRuleChapterList.getText()));
         bookSourceBeanN.setRuleChapterName(trim(tieRuleChapterName.getText()));
-        bookSourceBeanN.setRuleChapterUrl(trim(tieRuleChapterUrl.getText()));
-        bookSourceBeanN.setRuleChapterUrlNext(trim(tieRuleChapterUrlNext.getText()));
+        bookSourceBeanN.setRuleChapterUrl(trim(tieRuleChapterListUrl.getText()));
+        bookSourceBeanN.setRuleChapterUrlNext(trim(tieRuleChapterListUrlNext.getText()));
         bookSourceBeanN.setRuleContentUrl(trim(tieRuleContentUrl.getText()));
         bookSourceBeanN.setRuleCoverUrl(trim(tieRuleCoverUrl.getText()));
         bookSourceBeanN.setRuleIntroduce(trim(tieRuleIntroduce.getText()));
@@ -339,14 +353,13 @@ public class SourceEditActivity extends MBaseActivity<SourceEditContract.Present
         tieBookSourceUrl.setText(trim(bookSourceBean.getBookSourceUrl()));
         tieBookSourceGroup.setText(trim(bookSourceBean.getBookSourceGroup()));
         tieLoginUrl.setText(trim(bookSourceBean.getLoginUrl()));
-        tieCheckUrl.setText(trim(bookSourceBean.getCheckUrl()));
         tieRuleBookAuthor.setText(trim(bookSourceBean.getRuleBookAuthor()));
         tieRuleBookContent.setText(trim(bookSourceBean.getRuleBookContent()));
         tieRuleBookName.setText(trim(bookSourceBean.getRuleBookName()));
         tieRuleChapterList.setText(trim(bookSourceBean.getRuleChapterList()));
         tieRuleChapterName.setText(trim(bookSourceBean.getRuleChapterName()));
-        tieRuleChapterUrl.setText(trim(bookSourceBean.getRuleChapterUrl()));
-        tieRuleChapterUrlNext.setText(trim(bookSourceBean.getRuleChapterUrlNext()));
+        tieRuleChapterListUrl.setText(trim(bookSourceBean.getRuleChapterUrl()));
+        tieRuleChapterListUrlNext.setText(trim(bookSourceBean.getRuleChapterUrlNext()));
         tieRuleContentUrl.setText(trim(bookSourceBean.getRuleContentUrl()));
         tieRuleCoverUrl.setText(trim(bookSourceBean.getRuleCoverUrl()));
         tieRuleIntroduce.setText(trim(bookSourceBean.getRuleIntroduce()));
@@ -371,14 +384,13 @@ public class SourceEditActivity extends MBaseActivity<SourceEditContract.Present
         tilBookSourceUrl.setHint(getString(R.string.book_source_url));
         tilBookSourceGroup.setHint(getString(R.string.book_source_group));
         tilLoginUrl.setHint(getString(R.string.book_source_login_url));
-        tilCheckUrl.setHint(getString(R.string.book_source_check_url));
         tilRuleBookAuthor.setHint(getString(R.string.rule_book_author));
         tilRuleBookContent.setHint(getString(R.string.rule_book_content));
         tilRuleBookName.setHint(getString(R.string.rule_book_name));
         tilRuleChapterList.setHint(getString(R.string.rule_chapter_list));
         tilRuleChapterName.setHint(getString(R.string.rule_chapter_name));
-        tilRuleChapterUrl.setHint(getString(R.string.rule_chapter_page_url));
-        tilRuleChapterUrlNext.setHint(getString(R.string.urle_chapter_url_next));
+        tilRuleChapterListUrl.setHint(getString(R.string.rule_chapter_list_url));
+        tilRuleChapterListUrlNext.setHint(getString(R.string.rule_chapter_list_url_next));
         tilRuleContentUrl.setHint(getString(R.string.rule_content_url));
         tilRuleCoverUrl.setHint(getString(R.string.rule_cover_url));
         tilRuleIntroduce.setHint(getString(R.string.rule_introduce));
@@ -400,31 +412,64 @@ public class SourceEditActivity extends MBaseActivity<SourceEditContract.Present
 
     @SuppressLint("SetWorldReadable")
     private void shareBookSource() {
-        Bitmap bitmap = mPresenter.encodeAsBitmap(getBookSourceStr());
-        try {
-            File file = new File(this.getExternalCacheDir(), "bookSource.png");
-            FileOutputStream fOut = new FileOutputStream(file);
-            bitmap.compress(Bitmap.CompressFormat.PNG, 100, fOut);
-            fOut.flush();
-            fOut.close();
-            //noinspection ResultOfMethodCallIgnored
-            file.setReadable(true, false);
-            Uri contentUri = FileProvider.getUriForFile(this, BuildConfig.APPLICATION_ID + ".fileProvider", file);
-            final Intent intent = new Intent(Intent.ACTION_SEND);
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-            intent.putExtra(Intent.EXTRA_STREAM, contentUri);
-            intent.setType("image/png");
-            startActivity(Intent.createChooser(intent, "分享书源"));
-        } catch (Exception e) {
-            e.printStackTrace();
-        }
-    }
+        Single.create((SingleOnSubscribe<Bitmap>) emitter -> {
+            BitMatrix result;
+            MultiFormatWriter multiFormatWriter = new MultiFormatWriter();
+            try {
+                Hashtable<EncodeHintType, Object> hst = new Hashtable();
+                hst.put(EncodeHintType.CHARACTER_SET, "UTF-8");
+                hst.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.L);
+                result = multiFormatWriter.encode(getBookSourceStr(), BarcodeFormat.QR_CODE, 600, 600, hst);
+                int[] pixels = new int[600 * 600];
+                for (int y = 0; y < 600; y++) {
+                    for (int x = 0; x < 600; x++) {
+                        if (result.get(x, y)) {
+                            pixels[y * 600 + x] = Color.BLACK;
+                        } else {
+                            pixels[y * 600 + x] = Color.WHITE;
+                        }
+                    }
+                }
+                Bitmap bitmap = Bitmap.createBitmap(600, 600, Bitmap.Config.ARGB_8888);
+                bitmap.setPixels(pixels, 0, 600, 0, 0, 600, 600);
+                emitter.onSuccess(bitmap);
+            } catch (Exception e) {
+                emitter.onError(e);
+            }
+        }).compose(RxUtils::toSimpleSingle)
+                .subscribe(new SingleObserver<Bitmap>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
 
-    private void selectLocalImage() {
-        Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
-        intent.addCategory(Intent.CATEGORY_OPENABLE);
-        intent.setType("image/*");
-        startActivityForResult(intent, REQUEST_QR_IMAGE);
+                    }
+
+                    @Override
+                    public void onSuccess(Bitmap bitmap) {
+                        try {
+                            File file = new File(SourceEditActivity.this.getExternalCacheDir(), "bookSource.png");
+                            FileOutputStream fOut = new FileOutputStream(file);
+                            bitmap.compress(Bitmap.CompressFormat.PNG, 100, fOut);
+                            fOut.flush();
+                            fOut.close();
+                            //noinspection ResultOfMethodCallIgnored
+                            file.setReadable(true, false);
+                            Uri contentUri = FileProvider.getUriForFile(SourceEditActivity.this, BuildConfig.APPLICATION_ID + ".fileProvider", file);
+                            final Intent intent = new Intent(Intent.ACTION_SEND);
+                            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            intent.putExtra(Intent.EXTRA_STREAM, contentUri);
+                            intent.setType("image/png");
+                            startActivity(Intent.createChooser(intent, "分享书源"));
+                        } catch (Exception e) {
+                            toast(e.getLocalizedMessage());
+                        }
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        toast(e.getLocalizedMessage());
+                    }
+                });
+
     }
 
     private void openRuleSummary() {
@@ -460,7 +505,23 @@ public class SourceEditActivity extends MBaseActivity<SourceEditContract.Present
         int id = item.getItemId();
         switch (id) {
             case R.id.action_save:
-                saveBookSource();
+                if (canSaveBookSource()) {
+                    mPresenter.saveSource(getBookSource(), bookSourceBean)
+                            .subscribe(new SimpleObserver<Boolean>() {
+                                @Override
+                                public void onNext(Boolean aBoolean) {
+                                    bookSourceBean = getBookSource();
+                                    toast("保存成功");
+                                    setResult(RESULT_OK);
+                                    finish();
+                                }
+
+                                @Override
+                                public void onError(Throwable e) {
+                                    toast(e.getLocalizedMessage());
+                                }
+                            });
+                }
                 break;
             case R.id.action_login:
                 if (!TextUtils.isEmpty(getBookSource().getLoginUrl())) {
@@ -481,15 +542,23 @@ public class SourceEditActivity extends MBaseActivity<SourceEditContract.Present
             case R.id.action_share_it:
                 shareBookSource();
                 break;
-            case R.id.action_qr_code_image:
-                selectLocalImage();
-                break;
             case R.id.action_rule_summary:
                 openRuleSummary();
                 break;
             case R.id.action_debug_source:
-                if (saveBookSource()) {
-                    SourceDebugActivity.startThis(this, getBookSource().getBookSourceUrl());
+                if (canSaveBookSource()) {
+                    mPresenter.saveSource(getBookSource(), bookSourceBean)
+                            .subscribe(new SimpleObserver<Boolean>() {
+                                @Override
+                                public void onNext(Boolean aBoolean) {
+                                    SourceDebugActivity.startThis(SourceEditActivity.this, getBookSource().getBookSourceUrl());
+                                }
+
+                                @Override
+                                public void onError(Throwable e) {
+                                    toast(e.getLocalizedMessage());
+                                }
+                            });
                 }
                 break;
             case android.R.id.home:
@@ -503,17 +572,32 @@ public class SourceEditActivity extends MBaseActivity<SourceEditContract.Present
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQUEST_QR_IMAGE && resultCode == RESULT_OK && null != data) {
-            mPresenter.analyzeBitmap(data.getData());
-            return;
-        }
-        IntentResult result = IntentIntegrator.parseActivityResult(requestCode, resultCode, data);
-        if (result != null) {
-            if (result.getContents() != null) {
-                mPresenter.setText(result.getContents());
+        if (requestCode == REQUEST_QR && resultCode == RESULT_OK && null != data) {
+            String result = data.getStringExtra("result");
+            Observable<List<BookSourceBean>> observable = BookSourceManager.importSource(result);
+            if (observable != null) {
+                observable.subscribe(new SimpleObserver<List<BookSourceBean>>() {
+                    @SuppressLint("DefaultLocale")
+                    @Override
+                    public void onNext(List<BookSourceBean> bookSourceBeans) {
+                        if (bookSourceBeans.size() > 1) {
+                            toast(String.format("导入成功%d个书源, 显示第一个", bookSourceBeans.size()));
+                            setText(bookSourceBeans.get(0));
+                        } else if (bookSourceBeans.size() == 1) {
+                            setText(bookSourceBeans.get(0));
+                        } else {
+                            toast("未导入");
+                        }
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        toast(e.getLocalizedMessage());
+                    }
+                });
+            } else {
+                toast("导入失败");
             }
-        } else {
-            super.onActivityResult(requestCode, resultCode, data);
         }
     }
 
@@ -536,4 +620,66 @@ public class SourceEditActivity extends MBaseActivity<SourceEditContract.Present
         }
         return super.onKeyDown(keyCode, keyEvent);
     }
+
+    private void insertTextToEditText(String txt) {
+        if (TextUtils.isEmpty(txt)) return;
+        View view = getWindow().getDecorView().findFocus();
+        if (view instanceof EditText) {
+            EditText editText = (EditText) view;
+            int start = editText.getSelectionStart();
+            int end = editText.getSelectionEnd();
+            Editable edit = editText.getEditableText();//获取EditText的文字
+            if (start < 0 || start >= edit.length()) {
+                edit.append(txt);
+            } else {
+                edit.replace(start, end, txt);//光标所在位置插入文字
+            }
+        }
+    }
+
+    private void showKeyboardTopPopupWindow(int x, int y) {
+        if (mSoftKeyboardTool != null && mSoftKeyboardTool.isShowing()) {
+            updateKeyboardTopPopupWindow(x, y); //可能是输入法切换了输入模式，高度会变化（比如切换为语音输入）
+            return;
+        }
+        if (mSoftKeyboardTool != null) {
+            mSoftKeyboardTool.showAtLocation(llContent, Gravity.BOTTOM, x, y);
+        }
+    }
+
+    private void updateKeyboardTopPopupWindow(int x, int y) {
+        if (mSoftKeyboardTool != null && mSoftKeyboardTool.isShowing()) {
+            mSoftKeyboardTool.update(x, y, mSoftKeyboardTool.getWidth(), mSoftKeyboardTool.getHeight());
+        }
+    }
+
+    private void closePopupWindow() {
+        if (mSoftKeyboardTool != null && mSoftKeyboardTool.isShowing()) {
+            mSoftKeyboardTool.dismiss();
+        }
+    }
+
+    private class KeyboardOnGlobalChangeListener implements ViewTreeObserver.OnGlobalLayoutListener {
+        @Override
+        public void onGlobalLayout() {
+            Rect rect = new Rect();
+            // 获取当前页面窗口的显示范围
+            getWindow().getDecorView().getWindowVisibleDisplayFrame(rect);
+            int screenHeight = SoftInputUtil.getScreenHeight(SourceEditActivity.this);
+            int keyboardHeight = screenHeight - rect.bottom; // 输入法的高度
+            boolean preShowing = mIsSoftKeyBoardShowing;
+            if (Math.abs(keyboardHeight) > screenHeight / 5) {
+                mIsSoftKeyBoardShowing = true; // 超过屏幕五分之一则表示弹出了输入法
+                showKeyboardTopPopupWindow(SoftInputUtil.getScreenWidth(SourceEditActivity.this) / 2, keyboardHeight);
+                llContent.setPadding(0, ScreenUtils.getStatusBarHeight(), 0, keyboardHeight + 100);
+            } else {
+                if (preShowing) {
+                    closePopupWindow();
+                }
+                mIsSoftKeyBoardShowing = false;
+                llContent.setPadding(0, ScreenUtils.getStatusBarHeight(), 0, 0);
+            }
+        }
+    }
+
 }

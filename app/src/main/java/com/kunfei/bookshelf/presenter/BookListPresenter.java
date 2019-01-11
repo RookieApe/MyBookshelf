@@ -2,7 +2,6 @@
 package com.kunfei.bookshelf.presenter;
 
 import android.os.AsyncTask;
-import android.support.annotation.NonNull;
 import android.text.TextUtils;
 import android.util.Log;
 
@@ -10,14 +9,8 @@ import com.hwangjr.rxbus.RxBus;
 import com.hwangjr.rxbus.annotation.Subscribe;
 import com.hwangjr.rxbus.annotation.Tag;
 import com.hwangjr.rxbus.thread.EventThread;
-import com.kunfei.basemvplib.BaseActivity;
 import com.kunfei.basemvplib.BasePresenterImpl;
 import com.kunfei.basemvplib.impl.IView;
-import com.kunfei.bookshelf.base.observer.SimpleObserver;
-import com.kunfei.bookshelf.bean.DownloadBookBean;
-import com.kunfei.bookshelf.help.BookshelfHelp;
-import com.kunfei.bookshelf.help.RxBusTag;
-import com.kunfei.bookshelf.utils.NetworkUtil;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.base.observer.SimpleObserver;
 import com.kunfei.bookshelf.bean.BookShelfBean;
@@ -28,14 +21,18 @@ import com.kunfei.bookshelf.model.WebBookModel;
 import com.kunfei.bookshelf.presenter.contract.BookListContract;
 import com.kunfei.bookshelf.service.DownloadService;
 import com.kunfei.bookshelf.utils.NetworkUtil;
-import com.trello.rxlifecycle2.android.ActivityEvent;
+import com.kunfei.bookshelf.utils.RxUtils;
 
 import java.util.ArrayList;
 import java.util.List;
 
+import androidx.annotation.NonNull;
 import io.reactivex.Observable;
 import io.reactivex.ObservableOnSubscribe;
+import io.reactivex.Observer;
 import io.reactivex.android.schedulers.AndroidSchedulers;
+import io.reactivex.disposables.CompositeDisposable;
+import io.reactivex.disposables.Disposable;
 import io.reactivex.schedulers.Schedulers;
 
 public class BookListPresenter extends BasePresenterImpl<BookListContract.View> implements BookListContract.Presenter {
@@ -45,6 +42,7 @@ public class BookListPresenter extends BasePresenterImpl<BookListContract.View> 
     private int group;
     private boolean hasUpdate = false;
     private List<String> errBooks = new ArrayList<>();
+    private CompositeDisposable compositeDisposable = new CompositeDisposable();
 
     @Override
     public void queryBookShelf(final Boolean needRefresh, final int group) {
@@ -94,7 +92,7 @@ public class BookListPresenter extends BasePresenterImpl<BookListContract.View> 
                 if (!bookShelfBean.getTag().equals(BookShelfBean.LOCAL_TAG) && (!onlyNew || bookShelfBean.getHasUpdate())) {
                     int chapterNum = bookShelfBean.getChapterListSize();
                     for (int start = bookShelfBean.getDurChapter(); start < chapterNum; start++) {
-                        if (!BookshelfHelp.isChapterCached(bookShelfBean.getBookInfoBean(), bookShelfBean.getChapterList(start))
+                        if (!BookshelfHelp.isChapterCached(bookShelfBean.getBookInfoBean(), bookShelfBean.getChapter(start))
                                 && start < chapterNum - 1) {
                             DownloadBookBean downloadBook = new DownloadBookBean();
                             downloadBook.setName(bookShelfBean.getBookInfoBean().getName());
@@ -128,16 +126,19 @@ public class BookListPresenter extends BasePresenterImpl<BookListContract.View> 
         refreshIndex++;
         if (refreshIndex < bookShelfBeans.size()) {
             BookShelfBean bookShelfBean = bookShelfBeans.get(refreshIndex);
-            if (!bookShelfBean.getTag().equals(BookShelfBean.LOCAL_TAG) && bookShelfBean.getAllowUpdate()) {
+            if (!bookShelfBean.getTag().equals(BookShelfBean.LOCAL_TAG) && bookShelfBean.getAllowUpdate() && bookShelfBean.getGroup() != 3) {
                 int chapterNum = bookShelfBean.getChapterListSize();
                 bookShelfBean.setLoading(true);
                 mView.refreshBook(bookShelfBean.getNoteUrl());
                 WebBookModel.getInstance().getChapterList(bookShelfBean)
                         .flatMap(this::saveBookToShelfO)
-                        .subscribeOn(Schedulers.io())
-                        .observeOn(AndroidSchedulers.mainThread())
-                        .compose(((BaseActivity) mView.getContext()).bindUntilEvent(ActivityEvent.DESTROY))
-                        .subscribe(new SimpleObserver<BookShelfBean>() {
+                        .compose(RxUtils::toSimpleSingle)
+                        .subscribe(new Observer<BookShelfBean>() {
+                            @Override
+                            public void onSubscribe(Disposable d) {
+                                compositeDisposable.add(d);
+                            }
+
                             @Override
                             public void onNext(BookShelfBean value) {
                                 if (value.getErrorMsg() != null) {
@@ -158,6 +159,11 @@ public class BookListPresenter extends BasePresenterImpl<BookListContract.View> 
                                 bookShelfBean.setLoading(false);
                                 mView.refreshBook(bookShelfBean.getNoteUrl());
                                 refreshBookshelf();
+                            }
+
+                            @Override
+                            public void onComplete() {
+
                             }
                         });
             } else {
@@ -199,6 +205,7 @@ public class BookListPresenter extends BasePresenterImpl<BookListContract.View> 
     @Override
     public void detachView() {
         RxBus.get().unregister(this);
+        compositeDisposable.dispose();
     }
 
     @Subscribe(thread = EventThread.MAIN_THREAD,

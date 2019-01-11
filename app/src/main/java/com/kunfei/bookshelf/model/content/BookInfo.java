@@ -27,7 +27,6 @@ class BookInfo {
         return Observable.create(e -> {
             if (TextUtils.isEmpty(s)) {
                 e.onError(new Throwable("书籍信息获取失败"));
-                e.onComplete();
                 return;
             }
             bookShelfBean.setTag(tag);
@@ -39,7 +38,7 @@ class BookInfo {
             bookInfoBean.setNoteUrl(bookShelfBean.getNoteUrl());   //id
             bookInfoBean.setTag(tag);
 
-            AnalyzeRule analyzer = new AnalyzeRule();
+            AnalyzeRule analyzer = new AnalyzeRule(bookShelfBean);
             analyzer.setContent(s);
 
             if (isEmpty(bookInfoBean.getName())) {

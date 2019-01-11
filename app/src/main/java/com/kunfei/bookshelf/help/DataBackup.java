@@ -1,7 +1,6 @@
 package com.kunfei.bookshelf.help;
 
 import android.content.SharedPreferences;
-import android.support.v4.provider.DocumentFile;
 import android.widget.Toast;
 
 import com.google.gson.Gson;
@@ -17,18 +16,19 @@ import com.kunfei.bookshelf.dao.DbHelper;
 import com.kunfei.bookshelf.model.BookSourceManager;
 import com.kunfei.bookshelf.model.ReplaceRuleManager;
 import com.kunfei.bookshelf.utils.FileUtil;
-import com.kunfei.bookshelf.utils.SharedPreferencesUtil;
+import com.kunfei.bookshelf.utils.PermissionUtils;
 import com.kunfei.bookshelf.utils.XmlUtils;
 
+import java.io.File;
 import java.io.FileOutputStream;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
 
+import androidx.documentfile.provider.DocumentFile;
 import io.reactivex.Observable;
 import io.reactivex.ObservableOnSubscribe;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.schedulers.Schedulers;
-import pub.devrel.easypermissions.EasyPermissions;
 
 
 /**
@@ -44,20 +44,23 @@ public class DataBackup {
 
     public void autoSave() {
         long currentTime = System.currentTimeMillis();
-        if (EasyPermissions.hasPermissions(MApplication.getInstance(), MApplication.PerList)) {
-            long lastBackupTime = (long) SharedPreferencesUtil.getData("backupTime", 0L);
-            if (currentTime - lastBackupTime > TimeUnit.DAYS.toMillis(1)) {
-                DocumentHelper.createDirIfNotExist(FileUtil.getSdCardPath(), "YueDu");
-                String dirPath = FileUtil.getSdCardPath() + "/YueDu";
-                DocumentHelper.createDirIfNotExist(dirPath, "autoSave");
-                dirPath += "/autoSave";
-                backupBookShelf(dirPath);
-                backupBookSource(dirPath);
-                backupSearchHistory(dirPath);
-                backupReplaceRule(dirPath);
-                backupConfig(dirPath);
-                SharedPreferencesUtil.saveData("backupTime", currentTime);
+        List<String> per = PermissionUtils.checkMorePermissions(MApplication.getInstance(), MApplication.PerList);
+        if (per.isEmpty()) {
+            File file = new File(FileUtil.getSdCardPath() + File.separator + "YueDu" + File.separator + "autoSave" + File.separator + "myBookShelf.json");
+            if (file.exists()) {
+                if (currentTime - file.lastModified() < TimeUnit.DAYS.toMillis(1)) {
+                    return;
+                }
             }
+            DocumentHelper.createDirIfNotExist(FileUtil.getSdCardPath(), "YueDu");
+            String dirPath = FileUtil.getSdCardPath() + "/YueDu";
+            DocumentHelper.createDirIfNotExist(dirPath, "autoSave");
+            dirPath += "/autoSave";
+            backupBookShelf(dirPath);
+            backupBookSource(dirPath);
+            backupSearchHistory(dirPath);
+            backupReplaceRule(dirPath);
+            backupConfig(dirPath);
         }
     }
 

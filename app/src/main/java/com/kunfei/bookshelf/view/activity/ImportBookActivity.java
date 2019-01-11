@@ -1,20 +1,15 @@
 package com.kunfei.bookshelf.view.activity;
 
-import android.support.v4.app.Fragment;
-import android.support.v4.view.ViewPager;
-import android.support.v7.app.ActionBar;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.widget.Toolbar;
 import android.view.Menu;
 import android.view.MenuItem;
-import android.widget.Button;
 import android.widget.CheckBox;
+import android.widget.TextView;
 
-import com.kunfei.bookshelf.presenter.ImportBookPresenter;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.base.BaseTabActivity;
 import com.kunfei.bookshelf.presenter.ImportBookPresenter;
 import com.kunfei.bookshelf.presenter.contract.ImportBookContract;
+import com.kunfei.bookshelf.utils.Theme.ThemeStore;
 import com.kunfei.bookshelf.view.fragment.BaseFileFragment;
 import com.kunfei.bookshelf.view.fragment.FileCategoryFragment;
 import com.kunfei.bookshelf.view.fragment.LocalBookFragment;
@@ -23,6 +18,11 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.widget.Toolbar;
+import androidx.fragment.app.Fragment;
+import androidx.viewpager.widget.ViewPager;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 
@@ -36,9 +36,9 @@ public class ImportBookActivity extends BaseTabActivity<ImportBookContract.Prese
     @BindView(R.id.file_system_cb_selected_all)
     CheckBox mCbSelectAll;
     @BindView(R.id.file_system_btn_delete)
-    Button mBtnDelete;
+    TextView mBtnDelete;
     @BindView(R.id.file_system_btn_add_book)
-    Button mBtnAddBook;
+    TextView mBtnAddBook;
     @BindView(R.id.toolbar)
     Toolbar toolbar;
 
@@ -72,15 +72,18 @@ public class ImportBookActivity extends BaseTabActivity<ImportBookContract.Prese
 
     @Override
     protected void onCreateActivity() {
+        getWindow().getDecorView().setBackgroundColor(ThemeStore.backgroundColor(this));
         setContentView(R.layout.activity_import_book);
         ButterKnife.bind(this);
         setSupportActionBar(toolbar);
         setupActionBar();
+
     }
 
     @Override
     protected void initData() {
-
+        mTlIndicator.setSelectedTabIndicatorColor(ThemeStore.accentColor(this));
+        mTlIndicator.setTabTextColors(getResources().getColor(R.color.tv_text_default), ThemeStore.accentColor(this));
     }
 
     @Override

@@ -1,31 +1,40 @@
 package com.kunfei.bookshelf.view.activity;
 
+import android.annotation.SuppressLint;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
-import android.support.design.widget.AppBarLayout;
-import android.support.v7.app.ActionBar;
-import android.support.v7.widget.SearchView;
-import android.support.v7.widget.Toolbar;
 import android.text.TextUtils;
 import android.view.MenuItem;
 import android.widget.TextView;
 
+import com.google.android.material.appbar.AppBarLayout;
 import com.kunfei.basemvplib.impl.IPresenter;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.base.MBaseActivity;
+import com.kunfei.bookshelf.bean.BookContentBean;
+import com.kunfei.bookshelf.bean.BookShelfBean;
+import com.kunfei.bookshelf.bean.ChapterListBean;
 import com.kunfei.bookshelf.bean.SearchBookBean;
+import com.kunfei.bookshelf.help.BookshelfHelp;
 import com.kunfei.bookshelf.model.WebBookModel;
 import com.kunfei.bookshelf.utils.RxUtils;
+import com.kunfei.bookshelf.utils.SoftInputUtil;
+import com.kunfei.bookshelf.utils.Theme.ThemeStore;
 import com.victor.loading.rotate.RotateLoading;
 
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.widget.SearchView;
+import androidx.appcompat.widget.Toolbar;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import io.reactivex.Observer;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
+import io.reactivex.schedulers.Schedulers;
 
 public class SourceDebugActivity extends MBaseActivity {
     @BindView(R.id.toolbar)
@@ -76,6 +85,7 @@ public class SourceDebugActivity extends MBaseActivity {
      */
     @Override
     protected void onCreateActivity() {
+        getWindow().getDecorView().setBackgroundColor(ThemeStore.backgroundColor(this));
         setContentView(R.layout.activity_source_debug);
         ButterKnife.bind(this);
         this.setSupportActionBar(toolbar);
@@ -121,6 +131,7 @@ public class SourceDebugActivity extends MBaseActivity {
                 if (TextUtils.isEmpty(query))
                     return false;
                 startDebug(query);
+                SoftInputUtil.hideIMM(SourceDebugActivity.this, searchView);
                 return true;
             }
 
@@ -146,18 +157,20 @@ public class SourceDebugActivity extends MBaseActivity {
                         compositeDisposable.add(d);
                     }
 
+                    @SuppressLint("DefaultLocale")
                     @Override
                     public void onNext(List<SearchBookBean> searchBookBeans) {
-                        tvContent.setText("搜索列表获取成功");
+                        tvContent.setText(String.format("搜索列表获取成功%d", searchBookBeans.size()));
                         SearchBookBean searchBookBean = searchBookBeans.get(0);
                         tvContent.setText(String.format("%s\n书名:%s", tvContent.getText(), searchBookBean.getName()));
                         tvContent.setText(String.format("%s\n作者:%s", tvContent.getText(), searchBookBean.getAuthor()));
                         tvContent.setText(String.format("%s\n分类:%s", tvContent.getText(), searchBookBean.getKind()));
                         tvContent.setText(String.format("%s\n简介:%s", tvContent.getText(), searchBookBean.getOrigin()));
+                        tvContent.setText(String.format("%s\n封面地址:%s", tvContent.getText(), searchBookBean.getCoverUrl()));
                         tvContent.setText(String.format("%s\n最新章节:%s", tvContent.getText(), searchBookBean.getLastChapter()));
                         tvContent.setText(String.format("%s\n书籍地址:%s", tvContent.getText(), searchBookBean.getNoteUrl()));
                         if (!TextUtils.isEmpty(searchBookBean.getNoteUrl())) {
-                            bookInfoDebug(searchBookBean.getNoteUrl());
+                            bookInfoDebug(BookshelfHelp.getBookFromSearchBook(searchBookBean));
                         } else {
                             loading.stop();
                         }
@@ -177,7 +190,102 @@ public class SourceDebugActivity extends MBaseActivity {
 
     }
 
-    private void bookInfoDebug(String noteUrl) {
+    private void bookInfoDebug(BookShelfBean bookShelfBean) {
+        WebBookModel.getInstance().getBookInfo(bookShelfBean)
+                .compose(RxUtils::toSimpleSingle)
+                .subscribe(new Observer<BookShelfBean>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+                        compositeDisposable.add(d);
+                    }
 
+                    @Override
+                    public void onNext(BookShelfBean bookShelfBean) {
+                        tvContent.setText(String.format("%s\n最新章节:%s", tvContent.getText(), bookShelfBean.getLastChapterName()));
+                        tvContent.setText(String.format("%s\n封面:%s", tvContent.getText(), bookShelfBean.getBookInfoBean().getCoverUrl()));
+                        tvContent.setText(String.format("%s\n简介:%s", tvContent.getText(), bookShelfBean.getBookInfoBean().getIntroduce()));
+                        tvContent.setText(String.format("%s\n目录地址:%s", tvContent.getText(), bookShelfBean.getBookInfoBean().getChapterUrl()));
+                        bookChapterListDebug(bookShelfBean);
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        tvContent.setText(String.format("%s\n加载书籍信息错误:%s", tvContent.getText(), e.getMessage()));
+                        loading.stop();
+                    }
+
+                    @Override
+                    public void onComplete() {
+
+                    }
+                });
+    }
+
+    private void bookChapterListDebug(BookShelfBean bookShelfBean) {
+        WebBookModel.getInstance().getChapterList(bookShelfBean)
+                .compose(RxUtils::toSimpleSingle)
+                .subscribe(new Observer<BookShelfBean>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+                        compositeDisposable.add(d);
+                    }
+
+                    @SuppressLint("DefaultLocale")
+                    @Override
+                    public void onNext(BookShelfBean bookShelfBean) {
+                        tvContent.setText(String.format("%s\n获取目录数量:%d", tvContent.getText(), bookShelfBean.getChapterList().size()));
+                        if (bookShelfBean.getChapterList().size() > 0) {
+                            ChapterListBean chapterListBean = bookShelfBean.getChapter(0);
+                            tvContent.setText(String.format("%s\n章节名称:%s", tvContent.getText(), chapterListBean.getDurChapterName()));
+                            tvContent.setText(String.format("%s\n章节地址:%s", tvContent.getText(), chapterListBean.getDurChapterUrl()));
+                            if (!TextUtils.isEmpty(chapterListBean.getDurChapterUrl())) {
+                                bookContentDebug(chapterListBean, bookShelfBean.getBookInfoBean().getName());
+                            } else {
+                                loading.stop();
+                            }
+                        } else {
+                            loading.stop();
+                        }
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        tvContent.setText(String.format("%s\n加载目录错误:%s", tvContent.getText(), e.getMessage()));
+                        loading.stop();
+                    }
+
+                    @Override
+                    public void onComplete() {
+
+                    }
+                });
+    }
+
+    private void bookContentDebug(ChapterListBean chapterListBean, String bookName) {
+        WebBookModel.getInstance().getBookContent(Schedulers.io(), chapterListBean, bookName)
+                .timeout(20, TimeUnit.SECONDS)
+                .compose(RxUtils::toSimpleSingle)
+                .subscribe(new Observer<BookContentBean>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+                        compositeDisposable.add(d);
+                    }
+
+                    @Override
+                    public void onNext(BookContentBean bookContentBean) {
+                        tvContent.setText(String.format("%s\n正文:%s", tvContent.getText(), bookContentBean.getDurChapterContent()));
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+                        tvContent.setText(String.format("%s\n加载正文错误:%s", tvContent.getText(), e.getMessage()));
+                        loading.stop();
+                    }
+
+                    @Override
+                    public void onComplete() {
+                        loading.stop();
+                    }
+                });
     }
 }

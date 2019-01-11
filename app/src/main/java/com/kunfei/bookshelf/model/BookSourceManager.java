@@ -1,15 +1,12 @@
 package com.kunfei.bookshelf.model;
 
 import android.database.Cursor;
-import android.support.annotation.Nullable;
 import android.text.TextUtils;
 
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.hwangjr.rxbus.RxBus;
 import com.kunfei.basemvplib.BaseModelImpl;
-import com.kunfei.bookshelf.help.RxBusTag;
-import com.kunfei.bookshelf.model.impl.IHttpGetApi;
 import com.kunfei.bookshelf.MApplication;
 import com.kunfei.bookshelf.bean.BookSourceBean;
 import com.kunfei.bookshelf.dao.BookSourceBeanDao;
@@ -17,15 +14,21 @@ import com.kunfei.bookshelf.dao.DbHelper;
 import com.kunfei.bookshelf.help.RxBusTag;
 import com.kunfei.bookshelf.model.analyzeRule.AnalyzeHeaders;
 import com.kunfei.bookshelf.model.impl.IHttpGetApi;
+import com.kunfei.bookshelf.utils.RxUtils;
+import com.kunfei.bookshelf.utils.StringUtils;
 
+import java.net.MalformedURLException;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 
+import androidx.annotation.Nullable;
 import io.reactivex.Observable;
-import io.reactivex.android.schedulers.AndroidSchedulers;
-import io.reactivex.schedulers.Schedulers;
+import io.reactivex.Single;
+import io.reactivex.SingleObserver;
+import io.reactivex.SingleOnSubscribe;
+import io.reactivex.disposables.Disposable;
 
 /**
  * Created by GKF on 2017/12/15.
@@ -61,6 +64,19 @@ public class BookSourceManager extends BaseModelImpl {
             upGroupList();
         }
         return allBookSource;
+    }
+
+    public static List<BookSourceBean> getSelectedBookSourceBySerialNumber() {
+        return DbHelper.getInstance().getmDaoSession().getBookSourceBeanDao().queryBuilder()
+                .where(BookSourceBeanDao.Properties.Enable.eq(true))
+                .orderAsc(BookSourceBeanDao.Properties.SerialNumber)
+                .list();
+    }
+
+    public static List<BookSourceBean> getAllBookSourceBySerialNumber() {
+        return DbHelper.getInstance().getmDaoSession().getBookSourceBeanDao().queryBuilder()
+                .orderAsc(BookSourceBeanDao.Properties.SerialNumber)
+                .list();
     }
 
     @Nullable
@@ -113,6 +129,8 @@ public class BookSourceManager extends BaseModelImpl {
     }
 
     public static void addBookSource(BookSourceBean bookSourceBean) {
+        if (TextUtils.isEmpty(bookSourceBean.getBookSourceName()) || TextUtils.isEmpty(bookSourceBean.getBookSourceUrl()))
+            return;
         if (bookSourceBean.getBookSourceUrl().endsWith("/")) {
             bookSourceBean.setBookSourceUrl(bookSourceBean.getBookSourceUrl().substring(0, bookSourceBean.getBookSourceUrl().lastIndexOf("/")));
         }
@@ -128,6 +146,35 @@ public class BookSourceManager extends BaseModelImpl {
             bookSourceBean.setSerialNumber(allBookSource.size() + 1);
         }
         DbHelper.getInstance().getmDaoSession().getBookSourceBeanDao().insertOrReplace(bookSourceBean);
+    }
+
+    public static void toTop(BookSourceBean sourceBean) {
+        Single.create((SingleOnSubscribe<Boolean>) e -> {
+            List<BookSourceBean> beanList = getAllBookSourceBySerialNumber();
+            for (int i = 0; i < beanList.size(); i++) {
+                beanList.get(i).setSerialNumber(i + 1);
+            }
+            sourceBean.setSerialNumber(0);
+            DbHelper.getInstance().getmDaoSession().getBookSourceBeanDao().insertOrReplaceInTx(beanList);
+            DbHelper.getInstance().getmDaoSession().getBookSourceBeanDao().insertOrReplace(sourceBean);
+            e.onSuccess(true);
+        }).compose(RxUtils::toSimpleSingle)
+                .subscribe(new SingleObserver<Boolean>() {
+                    @Override
+                    public void onSubscribe(Disposable d) {
+
+                    }
+
+                    @Override
+                    public void onSuccess(Boolean aBoolean) {
+                        refreshBookSource();
+                    }
+
+                    @Override
+                    public void onError(Throwable e) {
+
+                    }
+                });
     }
 
     private synchronized static void upGroupList() {
@@ -147,44 +194,69 @@ public class BookSourceManager extends BaseModelImpl {
         RxBus.get().post(RxBusTag.UPDATE_BOOK_SOURCE, new Object());
     }
 
-    public static Observable<Boolean> importSourceFromWww(URL url) {
-        return getRetrofitString(String.format("%s://%s", url.getProtocol(), url.getHost()), "utf-8")
-                .create(IHttpGetApi.class)
-                .getWebContent(url.getPath(), AnalyzeHeaders.getMap(null))
-                .flatMap(rsp -> importBookSourceO(rsp.body()))
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread());
+    public static Observable<List<BookSourceBean>> importSource(String string) {
+        if (StringUtils.isTrimEmpty(string)) return null;
+        if (StringUtils.isJsonType(string)) {
+            return importBookSourceFromJson(string.trim())
+                    .compose(RxUtils::toSimpleSingle);
+        }
+        try {
+            URL url = new URL(string.trim());
+            return getRetrofitString(String.format("%s://%s", url.getProtocol(), url.getHost()), "utf-8")
+                    .create(IHttpGetApi.class)
+                    .getWebContent(url.getPath(), AnalyzeHeaders.getMap(null))
+                    .flatMap(rsp -> importBookSourceFromJson(rsp.body()))
+                    .compose(RxUtils::toSimpleSingle);
+        } catch (MalformedURLException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 
-    public static Observable<Boolean> importBookSourceO(String json) {
+    private static Observable<List<BookSourceBean>> importBookSourceFromJson(String json) {
         return Observable.create(e -> {
-            try {
-                List<BookSourceBean> bookSourceBeans = new Gson().fromJson(json, new TypeToken<List<BookSourceBean>>() {
-                }.getType());
-                for (BookSourceBean bookSourceBean : bookSourceBeans) {
-                    if (bookSourceBean.containsGroup("删除")) {
-                        DbHelper.getInstance().getmDaoSession().getBookSourceBeanDao().queryBuilder()
-                                .where(BookSourceBeanDao.Properties.BookSourceUrl.eq(bookSourceBean.getBookSourceUrl()))
-                                .buildDelete().executeDeleteWithoutDetachingEntities();
-                    } else {
-                        try {
-                            new URL(bookSourceBean.getBookSourceUrl());
-                            bookSourceBean.setSerialNumber(0);
-                            addBookSource(bookSourceBean);
-                        } catch (Exception exception) {
+            List<BookSourceBean> bookSourceBeans = new ArrayList<>();
+            if (StringUtils.isJsonArray(json)) {
+                try {
+                    bookSourceBeans = new Gson().fromJson(json, new TypeToken<List<BookSourceBean>>() {
+                    }.getType());
+                    for (BookSourceBean bookSourceBean : bookSourceBeans) {
+                        if (bookSourceBean.containsGroup("删除")) {
                             DbHelper.getInstance().getmDaoSession().getBookSourceBeanDao().queryBuilder()
                                     .where(BookSourceBeanDao.Properties.BookSourceUrl.eq(bookSourceBean.getBookSourceUrl()))
                                     .buildDelete().executeDeleteWithoutDetachingEntities();
+                        } else {
+                            try {
+                                new URL(bookSourceBean.getBookSourceUrl());
+                                bookSourceBean.setSerialNumber(0);
+                                addBookSource(bookSourceBean);
+                            } catch (Exception exception) {
+                                DbHelper.getInstance().getmDaoSession().getBookSourceBeanDao().queryBuilder()
+                                        .where(BookSourceBeanDao.Properties.BookSourceUrl.eq(bookSourceBean.getBookSourceUrl()))
+                                        .buildDelete().executeDeleteWithoutDetachingEntities();
+                            }
                         }
                     }
+                    refreshBookSource();
+                    e.onNext(bookSourceBeans);
+                    e.onComplete();
+                    return;
+                } catch (Exception ignored) {
                 }
-                refreshBookSource();
-                e.onNext(true);
-            } catch (Exception e1) {
-                e1.printStackTrace();
-                e.onNext(false);
             }
-            e.onComplete();
+            if (StringUtils.isJsonObject(json)) {
+                try {
+                    BookSourceBean bookSourceBean = new Gson().fromJson(json, new TypeToken<BookSourceBean>() {
+                    }.getType());
+                    addBookSource(bookSourceBean);
+                    bookSourceBeans.add(bookSourceBean);
+                    e.onNext(bookSourceBeans);
+                    e.onComplete();
+                    return;
+                } catch (Exception ignored) {
+                }
+            }
+            e.onError(new Throwable("格式不对"));
         });
     }
 

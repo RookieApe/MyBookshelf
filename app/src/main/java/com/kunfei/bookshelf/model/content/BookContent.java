@@ -2,8 +2,6 @@ package com.kunfei.bookshelf.model.content;
 
 import android.text.TextUtils;
 
-import com.kunfei.bookshelf.model.analyzeRule.AnalyzeRule;
-import com.kunfei.bookshelf.model.impl.IHttpGetApi;
 import com.kunfei.bookshelf.MApplication;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.bean.BaseChapterBean;
@@ -13,6 +11,8 @@ import com.kunfei.bookshelf.bean.ChapterListBean;
 import com.kunfei.bookshelf.dao.ChapterListBeanDao;
 import com.kunfei.bookshelf.dao.DbHelper;
 import com.kunfei.bookshelf.model.analyzeRule.AnalyzeHeaders;
+import com.kunfei.bookshelf.model.analyzeRule.AnalyzeRule;
+import com.kunfei.bookshelf.model.impl.IHttpGetApi;
 import com.kunfei.bookshelf.utils.StringUtils;
 
 import java.util.ArrayList;
@@ -39,11 +39,10 @@ class BookContent {
         return Observable.create(e -> {
             if (TextUtils.isEmpty(s)) {
                 e.onError(new Throwable("内容获取失败"));
-                e.onComplete();
                 return;
             }
 
-            if (StringUtils.isJSONType(s) && !MApplication.getInstance().getDonateHb()) {
+            if (StringUtils.isJsonType(s) && !MApplication.getInstance().getDonateHb()) {
                 e.onError(new Throwable(MApplication.getInstance().getString(R.string.donate_s)));
                 e.onComplete();
                 return;
@@ -95,7 +94,7 @@ class BookContent {
     private WebContentBean analyzeBookContent(final String s, final String chapterUrl) {
         WebContentBean webContentBean = new WebContentBean();
 
-        AnalyzeRule analyzer = new AnalyzeRule();
+        AnalyzeRule analyzer = new AnalyzeRule(null);
         analyzer.setContent(s);
 
         webContentBean.content = analyzer.getString(ruleBookContent);

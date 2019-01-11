@@ -3,11 +3,8 @@ package com.kunfei.bookshelf.view.activity;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
-import android.graphics.Bitmap;
-import android.graphics.BitmapFactory;
 import android.os.Build;
 import android.os.Bundle;
-import android.support.v7.widget.AppCompatImageView;
 import android.text.TextUtils;
 import android.text.method.ScrollingMovementMethod;
 import android.view.Gravity;
@@ -24,8 +21,6 @@ import com.bumptech.glide.load.engine.DiskCacheStrategy;
 import com.bumptech.glide.request.RequestOptions;
 import com.hwangjr.rxbus.RxBus;
 import com.kunfei.basemvplib.AppActivityManager;
-import com.kunfei.bookshelf.help.RxBusTag;
-import com.kunfei.bookshelf.widget.CoverImageView;
 import com.kunfei.bookshelf.BitIntentDataManager;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.base.MBaseActivity;
@@ -42,13 +37,14 @@ import com.kunfei.bookshelf.presenter.contract.BookDetailContract;
 import com.kunfei.bookshelf.widget.CoverImageView;
 import com.kunfei.bookshelf.widget.modialog.MoDialogHUD;
 
+import java.io.File;
 import java.util.Objects;
 
+import androidx.appcompat.widget.AppCompatImageView;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 
 import static com.kunfei.bookshelf.presenter.BookDetailPresenter.FROM_BOOKSHELF;
-import static com.kunfei.bookshelf.utils.BitmapUtil.stackBlur;
 
 public class BookDetailActivity extends MBaseActivity<BookDetailContract.Presenter> implements BookDetailContract.View {
     @BindView(R.id.ifl_content)
@@ -102,6 +98,7 @@ public class BookDetailActivity extends MBaseActivity<BookDetailContract.Present
 
     @Override
     protected void onCreateActivity() {
+        setTheme(R.style.CAppTransparentTheme);
         setContentView(R.layout.activity_book_detail);
     }
 
@@ -223,11 +220,16 @@ public class BookDetailActivity extends MBaseActivity<BookDetailContract.Present
                     .apply(RequestOptions.bitmapTransform(new BlurTransformation(this, 25)))
                     .into(ivBlurCover);
         } else {
-            Bitmap cover = BitmapFactory.decodeFile(coverPath);
-            if (cover != null) {
-                ivCover.setImageBitmap(cover);
-                ivBlurCover.setImageBitmap(stackBlur(cover));
-            }
+            File file = new File(coverPath);
+            Glide.with(this).load(file)
+                    .apply(new RequestOptions().dontAnimate().diskCacheStrategy(DiskCacheStrategy.RESOURCE).centerCrop()
+                            .placeholder(R.drawable.img_cover_default))
+                    .into(ivCover);
+            Glide.with(this).load(file)
+                    .apply(new RequestOptions().dontAnimate().diskCacheStrategy(DiskCacheStrategy.RESOURCE).centerCrop()
+                            .placeholder(R.drawable.img_cover_gs))
+                    .apply(RequestOptions.bitmapTransform(new BlurTransformation(this, 25)))
+                    .into(ivBlurCover);
         }
     }
 

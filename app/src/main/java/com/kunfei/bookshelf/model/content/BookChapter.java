@@ -23,6 +23,7 @@ import static android.text.TextUtils.isEmpty;
 class BookChapter {
     private String tag;
     private BookSourceBean bookSourceBean;
+    private AnalyzeRule analyzer;
 
     BookChapter(String tag, BookSourceBean bookSourceBean) {
         this.tag = tag;
@@ -33,10 +34,9 @@ class BookChapter {
         return Observable.create(e -> {
             if (TextUtils.isEmpty(s)) {
                 e.onError(new Throwable("目录获取失败"));
-                e.onComplete();
                 return;
             }
-
+            analyzer = new AnalyzeRule(bookShelfBean);
             bookShelfBean.setTag(tag);
             boolean dx = false;
             String ruleChapterList = bookSourceBean.getRuleChapterList();
@@ -98,7 +98,6 @@ class BookChapter {
         List<ChapterListBean> chapterBeans = new ArrayList<>();
         List<String> nextUrlList = new ArrayList<>();
 
-        AnalyzeRule analyzer = new AnalyzeRule();
         analyzer.setContent(s);
 
         if (!TextUtils.isEmpty(bookSourceBean.getRuleChapterUrlNext())) {
@@ -112,9 +111,9 @@ class BookChapter {
 
         AnalyzeCollection collections = analyzer.getElements(ruleChapterList);
         while (collections.hasNext()) {
-            AnalyzeRule anaer = collections.next();
-            String name = anaer.getString(bookSourceBean.getRuleChapterName());
-            String url = anaer.getString(bookSourceBean.getRuleContentUrl(), chapterUrl);
+            collections.next(analyzer);
+            String name = analyzer.getString(bookSourceBean.getRuleChapterName());
+            String url = analyzer.getString(bookSourceBean.getRuleContentUrl(), chapterUrl);
             if (!isEmpty(name) && !isEmpty(url)) {
                 ChapterListBean temp = new ChapterListBean();
                 temp.setTag(tag);

@@ -8,21 +8,14 @@ import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Handler;
 import android.os.IBinder;
-import android.support.annotation.Nullable;
-import android.support.v4.app.NotificationCompat;
-import android.text.TextUtils;
 
 import com.hwangjr.rxbus.RxBus;
 import com.kunfei.basemvplib.BaseModelImpl;
-import com.kunfei.bookshelf.help.RxBusTag;
-import com.kunfei.bookshelf.model.BookSourceManager;
-import com.kunfei.bookshelf.model.impl.IHttpGetApi;
 import com.kunfei.bookshelf.MApplication;
 import com.kunfei.bookshelf.R;
-import com.kunfei.bookshelf.bean.BookShelfBean;
 import com.kunfei.bookshelf.bean.BookSourceBean;
+import com.kunfei.bookshelf.help.RxBusTag;
 import com.kunfei.bookshelf.model.BookSourceManager;
-import com.kunfei.bookshelf.model.WebBookModel;
 import com.kunfei.bookshelf.model.analyzeRule.AnalyzeHeaders;
 import com.kunfei.bookshelf.model.impl.IHttpGetApi;
 import com.kunfei.bookshelf.view.activity.BookSourceActivity;
@@ -32,14 +25,14 @@ import java.util.List;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
+import androidx.annotation.Nullable;
+import androidx.core.app.NotificationCompat;
 import io.reactivex.Observer;
 import io.reactivex.Scheduler;
 import io.reactivex.android.schedulers.AndroidSchedulers;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
 import io.reactivex.schedulers.Schedulers;
-
-import static com.kunfei.bookshelf.help.RxBusTag.CHECK_SOURCE_STATE;
 
 public class CheckSourceService extends Service {
     public static final String ActionStartService = "startService";
@@ -185,26 +178,6 @@ public class CheckSourceService extends Service {
         }
 
         private void startCheck() {
-            if (!TextUtils.isEmpty(sourceBean.getCheckUrl())) {
-                try {
-                    new URL(sourceBean.getCheckUrl());
-                    BookShelfBean bookShelfBean = new BookShelfBean();
-                    bookShelfBean.setTag(sourceBean.getBookSourceUrl());
-                    bookShelfBean.setNoteUrl(sourceBean.getCheckUrl());
-                    bookShelfBean.setFinalDate(System.currentTimeMillis());
-                    bookShelfBean.setDurChapter(0);
-                    bookShelfBean.setDurChapterPage(0);
-                    WebBookModel.getInstance().getBookInfo(bookShelfBean)
-                            .subscribeOn(scheduler)
-                            .observeOn(AndroidSchedulers.mainThread())
-                            .subscribe(getObserver());
-                } catch (Exception exception) {
-                    sourceBean.addGroup("失效");
-                    BookSourceManager.addBookSource(sourceBean);
-                    BookSourceManager.refreshBookSource();
-                    nextCheck();
-                }
-            } else {
                 try {
                     new URL(sourceBean.getBookSourceUrl());
                     BaseModelImpl.getRetrofitString(sourceBean.getBookSourceUrl())
@@ -219,7 +192,6 @@ public class CheckSourceService extends Service {
                     BookSourceManager.refreshBookSource();
                     nextCheck();
                 }
-            }
         }
 
         private Observer<Object> getObserver() {

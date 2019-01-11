@@ -1,22 +1,22 @@
 package com.kunfei.bookshelf.model;
 
+import android.text.TextUtils;
+
 import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 import com.kunfei.basemvplib.BaseModelImpl;
-import com.kunfei.bookshelf.bean.ReplaceRuleBean;
-import com.kunfei.bookshelf.model.impl.IHttpGetApi;
 import com.kunfei.bookshelf.bean.ReplaceRuleBean;
 import com.kunfei.bookshelf.dao.DbHelper;
 import com.kunfei.bookshelf.dao.ReplaceRuleBeanDao;
 import com.kunfei.bookshelf.model.analyzeRule.AnalyzeHeaders;
 import com.kunfei.bookshelf.model.impl.IHttpGetApi;
+import com.kunfei.bookshelf.utils.RxUtils;
+import com.kunfei.bookshelf.utils.StringUtils;
 
 import java.net.URL;
 import java.util.List;
 
 import io.reactivex.Observable;
-import io.reactivex.android.schedulers.AndroidSchedulers;
-import io.reactivex.schedulers.Schedulers;
 
 /**
  * Created by GKF on 2018/2/12.
@@ -93,13 +93,25 @@ public class ReplaceRuleManager extends BaseModelImpl {
         lastUpTime = System.currentTimeMillis();
     }
 
-    public static Observable<Boolean> importReplaceRuleFromWww(URL url) {
-        return getRetrofitString(String.format("%s://%s", url.getProtocol(), url.getHost()), "utf-8")
-                .create(IHttpGetApi.class)
-                .getWebContent(url.getPath(), AnalyzeHeaders.getMap(null))
-                .flatMap(rsp -> importReplaceRuleO(rsp.body()))
-                .subscribeOn(Schedulers.io())
-                .observeOn(AndroidSchedulers.mainThread());
+    public static Observable<Boolean> importReplaceRule(String text) {
+        if (TextUtils.isEmpty(text)) return null;
+        text = text.trim();
+        if (text.length() == 0) return null;
+        if (StringUtils.isJsonType(text)) {
+            return importReplaceRuleO(text)
+                    .compose(RxUtils::toSimpleSingle);
+        } else {
+            try {
+                URL url = new URL(text);
+                return getRetrofitString(String.format("%s://%s", url.getProtocol(), url.getHost()), "utf-8")
+                        .create(IHttpGetApi.class)
+                        .getWebContent(url.getPath(), AnalyzeHeaders.getMap(null))
+                        .flatMap(rsp -> importReplaceRuleO(rsp.body()))
+                        .compose(RxUtils::toSimpleSingle);
+            } catch (Exception ignored) {
+            }
+        }
+        return null;
     }
 
     private static Observable<Boolean> importReplaceRuleO(String json) {

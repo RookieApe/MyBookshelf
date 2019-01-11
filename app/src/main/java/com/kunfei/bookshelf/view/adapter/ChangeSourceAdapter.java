@@ -1,7 +1,6 @@
 package com.kunfei.bookshelf.view.adapter;
 
 import android.content.Context;
-import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -13,10 +12,12 @@ import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.bean.SearchBookBean;
 import com.kunfei.bookshelf.dao.DbHelper;
 import com.kunfei.bookshelf.view.adapter.base.BaseListAdapter;
-import com.kunfei.bookshelf.widget.refreshview.RefreshRecyclerViewAdapter;
+import com.kunfei.bookshelf.widget.recycler.refresh.RefreshRecyclerViewAdapter;
 
 import java.util.ArrayList;
 import java.util.List;
+
+import androidx.recyclerview.widget.RecyclerView;
 
 import static android.text.TextUtils.isEmpty;
 

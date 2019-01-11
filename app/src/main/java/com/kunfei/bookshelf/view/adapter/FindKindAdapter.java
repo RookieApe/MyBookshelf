@@ -1,59 +1,48 @@
 package com.kunfei.bookshelf.view.adapter;
 
 import android.content.Context;
-import android.support.v7.widget.AppCompatImageView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
-import com.kunfei.bookshelf.bean.FindKindBean;
-import com.kunfei.bookshelf.bean.FindKindGroupBean;
-import com.kunfei.bookshelf.widget.refreshview.expandablerecyclerview.adapter.BaseRecyclerViewAdapter;
-import com.kunfei.bookshelf.widget.refreshview.expandablerecyclerview.bean.GroupItem;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.bean.FindKindBean;
 import com.kunfei.bookshelf.bean.FindKindGroupBean;
-import com.kunfei.bookshelf.widget.refreshview.expandablerecyclerview.adapter.BaseRecyclerViewAdapter;
-import com.kunfei.bookshelf.widget.refreshview.expandablerecyclerview.bean.GroupItem;
-import com.kunfei.bookshelf.widget.refreshview.expandablerecyclerview.bean.RecyclerViewData;
-import com.kunfei.bookshelf.widget.refreshview.expandablerecyclerview.holder.BaseExpandAbleViewHolder;
+import com.kunfei.bookshelf.widget.recycler.expandable.BaseExpandAbleViewHolder;
+import com.kunfei.bookshelf.widget.recycler.expandable.BaseExpandableRecyclerAdapter;
+import com.kunfei.bookshelf.widget.recycler.expandable.bean.GroupItem;
+import com.kunfei.bookshelf.widget.recycler.expandable.bean.RecyclerViewData;
 
 import java.util.List;
+
+import androidx.appcompat.widget.AppCompatImageView;
 
 /**
  * Created by GKF on 2017/12/22.
  * 书源Adapter
  */
 
-public class FindKindAdapter extends BaseRecyclerViewAdapter<FindKindGroupBean, FindKindBean, FindKindAdapter.MyViewHolder> {
-    private Context context;
-    private LayoutInflater mInflater;
+public class FindKindAdapter extends BaseExpandableRecyclerAdapter<FindKindGroupBean, FindKindBean, FindKindAdapter.MyViewHolder> {
 
-    public FindKindAdapter(Context context, List<RecyclerViewData> datas) {
-        super(context, datas);
-        this.context = context;
-        mInflater = LayoutInflater.from(context);
+    public FindKindAdapter(Context ctx, List<RecyclerViewData> datas) {
+        super(ctx, datas);
     }
 
     /**
      * return groupView
-     *
-     * @param parent
      */
     @Override
     public View getGroupView(ViewGroup parent) {
-        return mInflater.inflate(R.layout.item_find_group, parent, false);
+        return LayoutInflater.from(parent.getContext()).inflate(R.layout.item_find_group, parent, false);
     }
 
     /**
      * return childView
-     *
-     * @param parent
      */
     @Override
     public View getChildView(ViewGroup parent) {
-        return mInflater.inflate(R.layout.item_find_kind, parent, false);
+        return LayoutInflater.from(parent.getContext()).inflate(R.layout.item_find_kind, parent, false);
     }
 
     /**

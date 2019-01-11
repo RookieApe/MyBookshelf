@@ -1,21 +1,15 @@
 package com.kunfei.bookshelf.view.fragment;
 
-import android.app.Activity;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.os.Bundle;
-import android.support.annotation.Nullable;
-import android.support.v4.widget.SwipeRefreshLayout;
-import android.support.v7.widget.GridLayoutManager;
-import android.support.v7.widget.LinearLayoutManager;
-import android.support.v7.widget.RecyclerView;
-import android.support.v7.widget.helper.ItemTouchHelper;
 import android.view.View;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.kunfei.bookshelf.BitIntentDataManager;
+import com.kunfei.bookshelf.MApplication;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.base.MBaseFragment;
 import com.kunfei.bookshelf.bean.BookShelfBean;
@@ -25,6 +19,7 @@ import com.kunfei.bookshelf.presenter.BookListPresenter;
 import com.kunfei.bookshelf.presenter.ReadBookPresenter;
 import com.kunfei.bookshelf.presenter.contract.BookListContract;
 import com.kunfei.bookshelf.utils.NetworkUtil;
+import com.kunfei.bookshelf.utils.Theme.ThemeStore;
 import com.kunfei.bookshelf.view.activity.BookDetailActivity;
 import com.kunfei.bookshelf.view.activity.ReadBookActivity;
 import com.kunfei.bookshelf.view.adapter.BookShelfAdapter;
@@ -34,6 +29,12 @@ import com.kunfei.bookshelf.view.adapter.base.OnItemClickListenerTwo;
 
 import java.util.List;
 
+import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.ItemTouchHelper;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.Unbinder;
@@ -57,8 +58,6 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
 
     private BookShelfAdapter bookShelfAdapter;
 
-    private CallBackValue callBackValue;
-
     @Override
     public void onCreate(@Nullable Bundle savedInstanceState) {
         if (savedInstanceState != null) {
@@ -78,13 +77,8 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
     }
 
     @Override
-    public void onAttach(Activity activity) {
-        super.onAttach(activity);
-        callBackValue = (CallBackValue) getActivity();
-    }
-
-    @Override
     protected void initData() {
+        CallBackValue callBackValue = (CallBackValue) getActivity();
         bookPx = preferences.getString(getString(R.string.pk_bookshelf_px), "0");
         isRecreate = callBackValue != null && callBackValue.isRecreate();
     }
@@ -101,7 +95,7 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
             bookShelfAdapter = new BookShelfGridAdapter(getActivity());
         }
         rvBookshelf.setAdapter((RecyclerView.Adapter) bookShelfAdapter);
-        refreshLayout.setColorSchemeColors(getResources().getColor(R.color.colorAccent));
+        refreshLayout.setColorSchemeColors(ThemeStore.accentColor(MApplication.getInstance()));
     }
 
     @Override

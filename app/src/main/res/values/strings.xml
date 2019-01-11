@@ -4,7 +4,7 @@
     <string name="last_read">最后阅读</string>
     <string name="read_summary">让阅读成为一种习惯。</string>
     <string name="update_log">更新日志</string>
-
+    <string name="receiving_shared_label">阅读·搜索</string>
     <string name="bookshelf_empty">书架还空着，先去添加吧！</string>
     <string name="action_search">搜索</string>
     <string name="action_download">下载任务</string>
@@ -72,7 +72,7 @@
     <string name="all_chapter_num">共%d章</string>
     <string name="interface_setting">界面</string>
     <string name="brightness">亮度</string>
-    <string name="table_of_contents">目录</string>
+    <string name="chapter_list">目录</string>
     <string name="next_chapter">下一章</string>
     <string name="previous_chapter">上一章</string>
     <string name="pt_hide_status_bar">隐藏状态栏</string>
@@ -140,7 +140,6 @@
     <string name="menu">菜单</string>
     <string name="adjust">调节</string>
     <string name="scroll_bar">滚动条</string>
-    <string name="qqq">讨论群:701903217</string>
     <string name="clear_all_content">清除缓存会删除所有已保存章节,是否确认删除?</string>
     <string name="book_source_share_url">书源共享</string>
     <string name="replace_rule_summary">替换规则名称</string>
@@ -196,7 +195,7 @@
     <string name="bookmark_add">添加书签</string>
     <string name="action_del">删除</string>
     <string name="load_over_time">加载超时</string>
-    <string name="qq_group">QQ讨论群:%s</string>
+    <string name="join_group">关注:%s</string>
     <string name="copy_complete">已拷贝</string>
     <string name="clear_bookshelf">清空书架</string>
     <string name="clear_bookshelf_s">这将会删除所有书籍，请谨慎操作。</string>
@@ -309,8 +308,8 @@
     <string name="rule_book_name">书名规则</string>
     <string name="rule_chapter_list">目录列表规则</string>
     <string name="rule_chapter_name">章节名称规则</string>
-    <string name="rule_chapter_page_url">目录URL规则</string>
-    <string name="urle_chapter_url_next">章节列表下一页规则</string>
+    <string name="rule_chapter_list_url">目录URL规则</string>
+    <string name="rule_chapter_list_url_next">目录下一页规则</string>
     <string name="rule_content_url">章节URL规则</string>
     <string name="rule_cover_url">封面规则</string>
     <string name="rule_introduce">简介规则</string>
@@ -329,5 +328,14 @@
     <string name="rule_book_last_chapter">最新章节规则</string>
     <string name="source_user_agent">HttpUserAgent</string>
     <string name="debug_source">调试书源</string>
+    <string name="import_by_qr_code">二维码导入</string>
+    <string name="scan_qr_code">扫描二维码</string>
+    <string name="at_char">\@</string>
+    <string name="and_char"><![CDATA[&]]></string>
+    <string name="click_on_selected_show_menu">选中时点击可弹出菜单</string>
+    <string name="theme">主题</string>
+    <string name="default_theme">默认主题</string>
+    <string name="restore_default_theme">恢复主题为默认配色</string>
+    <string name="join_qq_group">加入QQ群</string>
 
 </resources>

@@ -2,18 +2,17 @@ package com.kunfei.bookshelf.view.activity;
 
 import android.content.Context;
 import android.content.Intent;
-import android.support.v7.app.ActionBar;
-import android.support.v7.widget.Toolbar;
 import android.view.MenuItem;
 import android.widget.LinearLayout;
 
 import com.kunfei.basemvplib.impl.IPresenter;
-import com.kunfei.bookshelf.base.MBaseActivity;
-import com.kunfei.bookshelf.view.fragment.SettingsFragment;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.base.MBaseActivity;
+import com.kunfei.bookshelf.utils.Theme.ThemeStore;
 import com.kunfei.bookshelf.view.fragment.SettingsFragment;
 
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.widget.Toolbar;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 
@@ -39,6 +38,7 @@ public class SettingActivity extends MBaseActivity {
 
     @Override
     protected void onCreateActivity() {
+        getWindow().getDecorView().setBackgroundColor(ThemeStore.backgroundColor(this));
         setContentView(R.layout.activity_settings);
         ButterKnife.bind(this);
         this.setSupportActionBar(toolbar);

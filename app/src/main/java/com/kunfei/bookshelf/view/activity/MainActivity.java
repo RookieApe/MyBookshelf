@@ -4,23 +4,11 @@ package com.kunfei.bookshelf.view.activity;
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.content.SharedPreferences;
-import android.content.res.ColorStateList;
 import android.content.res.Configuration;
+import android.graphics.PorterDuff;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.os.Handler;
-import android.support.annotation.NonNull;
-import android.support.design.widget.CoordinatorLayout;
-import android.support.design.widget.NavigationView;
-import android.support.design.widget.TabLayout;
-import android.support.v4.app.Fragment;
-import android.support.v4.view.GravityCompat;
-import android.support.v4.widget.DrawerLayout;
-import android.support.v7.app.ActionBar;
-import android.support.v7.app.ActionBarDrawerToggle;
-import android.support.v7.app.AlertDialog;
-import android.support.v7.widget.CardView;
-import android.support.v7.widget.Toolbar;
 import android.view.KeyEvent;
 import android.view.LayoutInflater;
 import android.view.Menu;
@@ -29,9 +17,10 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.widget.ImageView;
 import android.widget.PopupMenu;
-import android.widget.Switch;
 import android.widget.TextView;
 
+import com.google.android.material.navigation.NavigationView;
+import com.google.android.material.tabs.TabLayout;
 import com.hwangjr.rxbus.RxBus;
 import com.kunfei.bookshelf.MApplication;
 import com.kunfei.bookshelf.R;
@@ -42,10 +31,13 @@ import com.kunfei.bookshelf.help.DataBackup;
 import com.kunfei.bookshelf.help.LauncherIcon;
 import com.kunfei.bookshelf.help.ReadBookControl;
 import com.kunfei.bookshelf.help.RxBusTag;
-import com.kunfei.bookshelf.model.BookSourceManager;
 import com.kunfei.bookshelf.model.UpLastChapterModel;
 import com.kunfei.bookshelf.presenter.MainPresenter;
 import com.kunfei.bookshelf.presenter.contract.MainContract;
+import com.kunfei.bookshelf.utils.PermissionUtils;
+import com.kunfei.bookshelf.utils.Theme.ATH;
+import com.kunfei.bookshelf.utils.Theme.NavigationViewUtil;
+import com.kunfei.bookshelf.utils.Theme.ThemeStore;
 import com.kunfei.bookshelf.view.fragment.BookListFragment;
 import com.kunfei.bookshelf.view.fragment.FindBookFragment;
 import com.kunfei.bookshelf.widget.modialog.MoDialogHUD;
@@ -54,10 +46,19 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.ActionBarDrawerToggle;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.widget.AppCompatImageView;
+import androidx.appcompat.widget.Toolbar;
+import androidx.cardview.widget.CardView;
+import androidx.coordinatorlayout.widget.CoordinatorLayout;
+import androidx.core.view.GravityCompat;
+import androidx.drawerlayout.widget.DrawerLayout;
+import androidx.fragment.app.Fragment;
 import butterknife.BindView;
 import butterknife.ButterKnife;
-import pub.devrel.easypermissions.AfterPermissionGranted;
-import pub.devrel.easypermissions.EasyPermissions;
 
 import static com.kunfei.bookshelf.utils.NetworkUtil.isNetWorkAvailable;
 
@@ -78,7 +79,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
     @BindView(R.id.card_search)
     CardView cardSearch;
 
-    private Switch swNightTheme;
+    private AppCompatImageView vwNightTheme;
     private int group;
     private boolean viewIsList;
     private ActionBarDrawerToggle mDrawerToggle;
@@ -102,13 +103,14 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
     }
 
     @Override
-    protected void onSaveInstanceState(Bundle outState) {
+    protected void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
         outState.putBoolean("resumed", resumed);
     }
 
     @Override
     protected void onCreateActivity() {
+        getWindow().getDecorView().setBackgroundColor(ThemeStore.backgroundColor(this));
         setContentView(R.layout.activity_main);
         ButterKnife.bind(this);
     }
@@ -159,6 +161,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
         super.bindView();
         setSupportActionBar(toolbar);
         setupActionBar();
+        cardSearch.setCardBackgroundColor(ThemeStore.primaryColorDark(this));
         initDrawer();
         initTabLayout();
         upGroup(group);
@@ -171,25 +174,55 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
 
     //初始化TabLayout和ViewPager
     private void initTabLayout() {
+        mTlIndicator.setSelectedTabIndicatorColor(ThemeStore.accentColor(this));
+        mTlIndicator.setBackgroundColor(ThemeStore.backgroundColor(this));
         //TabLayout使用自定义Item
         for (int i = 0; i < mTlIndicator.getTabCount(); i++) {
             TabLayout.Tab tab = mTlIndicator.getTabAt(i);
             if (tab == null) return;
             if (i == 0) { //设置第一个Item的点击事件(当下标为0时触发)
                 tab.setCustomView(tab_icon(mTitles[i], R.drawable.ic_arrow_drop_down_black_24dp));
-                View tabView = (View) Objects.requireNonNull(tab.getCustomView()).getParent();
-                tabView.setTag(i);
-                tabView.setOnClickListener(view -> {
-                    if (tabView.isSelected()) {
-                        showBookGroupMenu(view);
-                    }
-                });
             } else {
-                tab.setCustomView(tab_icon(mTitles[i], null));
-                View tabView = (View) Objects.requireNonNull(tab.getCustomView()).getParent();
-                tabView.setTag(i);
+                tab.setCustomView(tab_icon(mTitles[i], R.drawable.ic_arrow_drop_down_black_24dp));
+            }
+            View customView = tab.getCustomView();
+            if (customView == null) return;
+            TextView tv = customView.findViewById(R.id.tabtext);
+            tab.setContentDescription(String.format("%s,%s", tv.getText(), getString(R.string.click_on_selected_show_menu)));
+            ImageView im = customView.findViewById(R.id.tabicon);
+            if (tab.isSelected()) {
+                im.setVisibility(View.VISIBLE);
+            } else {
+                im.setVisibility(View.GONE);
             }
         }
+        mTlIndicator.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+            @Override
+            public void onTabSelected(TabLayout.Tab tab) {
+                View customView = tab.getCustomView();
+                if (customView == null) return;
+                ImageView im = customView.findViewById(R.id.tabicon);
+                im.setVisibility(View.VISIBLE);
+            }
+
+            @Override
+            public void onTabUnselected(TabLayout.Tab tab) {
+                View customView = tab.getCustomView();
+                if (customView == null) return;
+                ImageView im = customView.findViewById(R.id.tabicon);
+                im.setVisibility(View.GONE);
+            }
+
+            @Override
+            public void onTabReselected(TabLayout.Tab tab) {
+                View tabView = (View) Objects.requireNonNull(tab.getCustomView()).getParent();
+                if (tab.getPosition() == 0) {
+                    showBookGroupMenu(tabView);
+                } else {
+                    showFindMenu(tabView);
+                }
+            }
+        });
     }
 
     /**
@@ -204,13 +237,28 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
             upGroup(menuItem.getOrder());
             return true;
         });
-        popupMenu.setOnDismissListener(popupMenu1 -> updateTabItemIcon(false));
+        popupMenu.setOnDismissListener(popupMenu1 -> updateTabItemIcon(0, false));
         popupMenu.show();
-        updateTabItemIcon(true);
+        updateTabItemIcon(0, true);
     }
 
-    private void updateTabItemIcon(boolean showMenu) {
-        TabLayout.Tab tab = mTlIndicator.getTabAt(0);
+    private void showFindMenu(View view) {
+        PopupMenu popupMenu = new PopupMenu(this, view);
+        popupMenu.getMenu().add(0, 0, 0, "切换显示样式");
+        popupMenu.setOnMenuItemClickListener(menuItem -> {
+            SharedPreferences.Editor editor = preferences.edit();
+            editor.putBoolean("findTypeIsFlexBox", !preferences.getBoolean("findTypeIsFlexBox", true));
+            editor.apply();
+            RxBus.get().post(RxBusTag.UP_FIND_STYLE, new Object());
+            return true;
+        });
+        popupMenu.setOnDismissListener(popupMenu1 -> updateTabItemIcon(1, false));
+        popupMenu.show();
+        updateTabItemIcon(1, true);
+    }
+
+    private void updateTabItemIcon(int index, boolean showMenu) {
+        TabLayout.Tab tab = mTlIndicator.getTabAt(index);
         if (tab == null) return;
         View customView = tab.getCustomView();
         if (customView == null) return;
@@ -229,6 +277,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
         if (customView == null) return;
         TextView tv = customView.findViewById(R.id.tabtext);
         tv.setText(getResources().getStringArray(R.array.book_group_array)[group]);
+        tab.setContentDescription(String.format("%s,%s", tv.getText(), getString(R.string.click_on_selected_show_menu)));
     }
 
     private View tab_icon(String name, Integer iconID) {
@@ -251,8 +300,8 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
         super.onPostCreate(savedInstanceState);
         // 这个必须要，没有的话进去的默认是个箭头。。正常应该是三横杠的
         mDrawerToggle.syncState();
-        if (swNightTheme != null) {
-            swNightTheme.setChecked(isNightTheme());
+        if (vwNightTheme != null) {
+            upThemeVw();
         }
     }
 
@@ -283,12 +332,22 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
         int id = item.getItemId();
         switch (id) {
             case R.id.action_add_local:
-                if (EasyPermissions.hasPermissions(this, MApplication.PerList)) {
-                    startActivity(new Intent(this, ImportBookActivity.class));
-                } else {
-                    EasyPermissions.requestPermissions(this, getString(R.string.import_book_source),
-                            FILE_SELECT_RESULT, MApplication.PerList);
-                }
+                PermissionUtils.checkMorePermissions(this, MApplication.PerList, new PermissionUtils.PermissionCheckCallBack() {
+                    @Override
+                    public void onHasPermission() {
+                        startActivity(new Intent(MainActivity.this, ImportBookActivity.class));
+                    }
+
+                    @Override
+                    public void onUserHasAlreadyTurnedDown(String... permission) {
+                        MainActivity.this.toast("导入本地书籍需存储权限");
+                    }
+
+                    @Override
+                    public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
+                        PermissionUtils.requestMorePermissions(MainActivity.this, permission, FILE_SELECT_RESULT);
+                    }
+                });
                 break;
             case R.id.action_add_url:
                 moDialogHUD.showInputBox("添加书籍网址",
@@ -377,21 +436,20 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
 
     }
 
-    //侧边栏按钮
+    /**
+     * 侧边栏按钮
+     */
     private void setUpNavigationView() {
         @SuppressLint("InflateParams") View headerView = LayoutInflater.from(this).inflate(R.layout.navigation_header, null);
+        ImageView imageView = headerView.findViewById(R.id.iv_navigation_header);
+        imageView.setColorFilter(ThemeStore.accentColor(this));
         navigationView.addHeaderView(headerView);
-        ColorStateList colorStateList = getResources().getColorStateList(R.color.navigation_color);
-        navigationView.setItemTextColor(colorStateList);
-        navigationView.setItemIconTintList(colorStateList);
+        NavigationViewUtil.setItemTextColors(navigationView, getResources().getColor(R.color.tv_text_default), ThemeStore.accentColor(this));
+        NavigationViewUtil.setItemIconColors(navigationView, getResources().getColor(R.color.tv_text_default), ThemeStore.accentColor(this));
         Menu drawerMenu = navigationView.getMenu();
-        swNightTheme = drawerMenu.findItem(R.id.action_night_theme).getActionView().findViewById(R.id.sw_night_theme);
-        swNightTheme.setChecked(isNightTheme());
-        swNightTheme.setOnCheckedChangeListener((compoundButton, b) -> {
-            if (compoundButton.isPressed()) {
-                setNightTheme(b);
-            }
-        });
+        vwNightTheme = drawerMenu.findItem(R.id.action_theme).getActionView().findViewById(R.id.iv_theme_day_night);
+        upThemeVw();
+        vwNightTheme.setOnClickListener(view -> setNightTheme(!isNightTheme()));
         navigationView.setNavigationItemSelectedListener(menuItem -> {
             drawer.closeDrawers();
             switch (menuItem.getItemId()) {
@@ -419,60 +477,77 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
                 case R.id.action_restore:
                     handler.postDelayed(this::restore, 200);
                     break;
-                case R.id.action_night_theme:
-                    swNightTheme.setChecked(!isNightTheme());
-                    setNightTheme(!isNightTheme());
+                case R.id.action_theme:
+                    handler.postDelayed(() -> ThemeSettingActivity.startThis(this), 200);
                     break;
             }
             return true;
         });
     }
 
-    //备份
-    private void backup() {
-        if (EasyPermissions.hasPermissions(this, MApplication.PerList)) {
-            new AlertDialog.Builder(this)
-                    .setTitle(R.string.backup_confirmation)
-                    .setMessage(R.string.backup_message)
-                    .setPositiveButton(R.string.ok, (dialog, which) -> mPresenter.backupData())
-                    .setNegativeButton(R.string.cancel, (dialogInterface, i) -> {
-                    })
-                    .show();
+    private void upThemeVw() {
+        if (isNightTheme()) {
+            vwNightTheme.setImageResource(R.drawable.ic_daytime_24dp);
+            vwNightTheme.setContentDescription("点击可切换到白天模式");
         } else {
-            EasyPermissions.requestPermissions(this, getString(R.string.backup_permission),
-                    BACKUP_RESULT, MApplication.PerList);
+            vwNightTheme.setImageResource(R.drawable.ic_brightness);
+            vwNightTheme.setContentDescription("点击可切换到夜间模式");
         }
+        vwNightTheme.getDrawable().mutate().setColorFilter(ThemeStore.accentColor(this), PorterDuff.Mode.SRC_ATOP);
     }
 
-    @AfterPermissionGranted(BACKUP_RESULT)
-    private void backupResult() {
-        backup();
+    //备份
+    private void backup() {
+        PermissionUtils.checkMorePermissions(this, MApplication.PerList, new PermissionUtils.PermissionCheckCallBack() {
+            @Override
+            public void onHasPermission() {
+                AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this)
+                        .setTitle(R.string.backup_confirmation)
+                        .setMessage(R.string.backup_message)
+                        .setPositiveButton(R.string.ok, (dialog, which) -> mPresenter.backupData())
+                        .setNegativeButton(R.string.cancel, (dialogInterface, i) -> {
+                        })
+                        .show();
+                ATH.setAlertDialogTint(alertDialog);
+            }
+
+            @Override
+            public void onUserHasAlreadyTurnedDown(String... permission) {
+                MainActivity.this.toast(R.string.backup_permission);
+            }
+
+            @Override
+            public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
+                PermissionUtils.requestMorePermissions(MainActivity.this, permission, BACKUP_RESULT);
+            }
+        });
     }
 
     //恢复
     private void restore() {
-        if (EasyPermissions.hasPermissions(this, MApplication.PerList)) {
-            new AlertDialog.Builder(this)
-                    .setTitle(R.string.restore_confirmation)
-                    .setMessage(R.string.restore_message)
-                    .setPositiveButton(R.string.ok, (dialog, which) -> mPresenter.restoreData())
-                    .setNegativeButton(R.string.cancel, (dialogInterface, i) -> {
-                    })
-                    .show();
-        } else {
-            EasyPermissions.requestPermissions(this, getString(R.string.restore_permission),
-                    RESTORE_RESULT, MApplication.PerList);
-        }
-    }
+        PermissionUtils.checkMorePermissions(this, MApplication.PerList, new PermissionUtils.PermissionCheckCallBack() {
+            @Override
+            public void onHasPermission() {
+                AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this)
+                        .setTitle(R.string.restore_confirmation)
+                        .setMessage(R.string.restore_message)
+                        .setPositiveButton(R.string.ok, (dialog, which) -> mPresenter.restoreData())
+                        .setNegativeButton(R.string.cancel, (dialogInterface, i) -> {
+                        })
+                        .show();
+                ATH.setAlertDialogTint(alertDialog);
+            }
 
-    @AfterPermissionGranted(RESTORE_RESULT)
-    private void restoreResult() {
-        restore();
-    }
+            @Override
+            public void onUserHasAlreadyTurnedDown(String... permission) {
+                MainActivity.this.toast(R.string.restore_permission);
+            }
 
-    @AfterPermissionGranted(FILE_SELECT_RESULT)
-    private void fileSelectResult() {
-        startActivityByAnim(new Intent(MainActivity.this, ImportBookActivity.class), 0, 0);
+            @Override
+            public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
+                PermissionUtils.requestMorePermissions(MainActivity.this, permission, RESTORE_RESULT);
+            }
+        });
     }
 
     private void versionUpRun() {
@@ -487,9 +562,10 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
     }
 
     private void requestPermission() {
-        if (!EasyPermissions.hasPermissions(this, MApplication.PerList)) {
-            EasyPermissions.requestPermissions(this, "本软件需要存储权限来缓存书籍信息",
-                    MApplication.RESULT__PERMS, MApplication.PerList);
+        List<String> per = PermissionUtils.checkMorePermissions(this, MApplication.PerList);
+        if (per.size() > 0) {
+            toast("本软件需要存储权限来存储备份书籍信息");
+            PermissionUtils.requestMorePermissions(this, per, MApplication.RESULT__PERMS);
         }
     }
 
@@ -515,8 +591,53 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        // Forward results to EasyPermissions
-        EasyPermissions.onRequestPermissionsResult(requestCode, permissions, grantResults, this);
+        PermissionUtils.checkMorePermissions(this, MApplication.PerList, new PermissionUtils.PermissionCheckCallBack() {
+            @Override
+            public void onHasPermission() {
+                switch (requestCode) {
+                    case FILE_SELECT_RESULT:
+                        startActivity(new Intent(MainActivity.this, ImportBookActivity.class));
+                        break;
+                    case BACKUP_RESULT:
+                        backup();
+                        break;
+                    case RESTORE_RESULT:
+                        restore();
+                        break;
+                }
+            }
+
+            @Override
+            public void onUserHasAlreadyTurnedDown(String... permission) {
+                switch (requestCode) {
+                    case FILE_SELECT_RESULT:
+                        MainActivity.this.toast("导入本地书籍需存储权限");
+                        break;
+                    case BACKUP_RESULT:
+                        MainActivity.this.toast(R.string.backup_permission);
+                        break;
+                    case RESTORE_RESULT:
+                        MainActivity.this.toast(R.string.restore_permission);
+                        break;
+                }
+            }
+
+            @Override
+            public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
+                switch (requestCode) {
+                    case FILE_SELECT_RESULT:
+                        MainActivity.this.toast("导入本地书籍需存储权限");
+                        break;
+                    case BACKUP_RESULT:
+                        MainActivity.this.toast(R.string.backup_permission);
+                        break;
+                    case RESTORE_RESULT:
+                        MainActivity.this.toast(R.string.restore_permission);
+                        break;
+                }
+                PermissionUtils.toAppSetting(MainActivity.this);
+            }
+        });
     }
 
     @Override
@@ -542,9 +663,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
 
     public void exit() {
         if ((System.currentTimeMillis() - exitTime) > 2000) {
-            if (getCurrentFocus() != null) {
-                showSnackBar(toolbar, "再按一次退出程序");
-            }
+            showSnackBar(toolbar, "再按一次退出程序");
             exitTime = System.currentTimeMillis();
         } else {
             DataBackup.getInstance().autoSave();

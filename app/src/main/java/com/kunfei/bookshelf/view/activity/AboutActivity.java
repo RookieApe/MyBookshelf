@@ -7,32 +7,31 @@ import android.content.Intent;
 import android.graphics.Bitmap;
 import android.net.Uri;
 import android.os.Bundle;
-import android.support.v7.app.ActionBar;
-import android.support.v7.widget.CardView;
-import android.support.v7.widget.Toolbar;
 import android.view.KeyEvent;
 import android.view.MenuItem;
 import android.widget.LinearLayout;
+import android.widget.PopupMenu;
 import android.widget.TextView;
 
-import com.google.zxing.BarcodeFormat;
-import com.google.zxing.EncodeHintType;
-import com.google.zxing.MultiFormatWriter;
-import com.google.zxing.WriterException;
-import com.google.zxing.common.BitMatrix;
-import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
-import com.journeyapps.barcodescanner.BarcodeEncoder;
 import com.kunfei.basemvplib.impl.IPresenter;
 import com.kunfei.bookshelf.MApplication;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.base.MBaseActivity;
 import com.kunfei.bookshelf.help.UpdateManager;
+import com.kunfei.bookshelf.utils.RxUtils;
+import com.kunfei.bookshelf.utils.Theme.ThemeStore;
 import com.kunfei.bookshelf.widget.modialog.MoDialogHUD;
 
-import java.util.Hashtable;
-
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.widget.Toolbar;
+import androidx.cardview.widget.CardView;
 import butterknife.BindView;
 import butterknife.ButterKnife;
+import cn.bingoogolapple.qrcode.zxing.QRCodeEncoder;
+import io.reactivex.Single;
+import io.reactivex.SingleObserver;
+import io.reactivex.SingleOnSubscribe;
+import io.reactivex.disposables.Disposable;
 
 /**
  * Created by GKF on 2017/12/15.
@@ -96,7 +95,7 @@ public class AboutActivity extends MBaseActivity {
     CardView vwShare;
 
     private MoDialogHUD moDialogHUD;
-    private String qq = "701903217 788025059";
+    private String allQQ[] = new String[]{"(QQ群)701903217", "(QQ群)805192012", "(QQ群)773736122", "(公众号)开源阅读软件"};
 
     public static void startThis(Context context) {
         Intent intent = new Intent(context, AboutActivity.class);
@@ -115,6 +114,7 @@ public class AboutActivity extends MBaseActivity {
 
     @Override
     protected void onCreateActivity() {
+        getWindow().getDecorView().setBackgroundColor(ThemeStore.backgroundColor(this));
         setContentView(R.layout.activity_about);
     }
 
@@ -129,7 +129,6 @@ public class AboutActivity extends MBaseActivity {
         this.setSupportActionBar(toolbar);
         setupActionBar();
         tvVersion.setText(getString(R.string.version_name, MApplication.getVersionName()));
-        tvQq.setText(getString(R.string.qq_group, qq));
     }
 
     @Override
@@ -142,27 +141,86 @@ public class AboutActivity extends MBaseActivity {
         vwUpdate.setOnClickListener(view -> UpdateManager.getInstance(this).checkUpdate(true));
         vwHomePage.setOnClickListener(view -> openIntent(Intent.ACTION_VIEW, getString(R.string.home_page_url)));
         vwQq.setOnClickListener(view -> {
-            ClipboardManager clipboard = (ClipboardManager) this.getSystemService(Context.CLIPBOARD_SERVICE);
-            ClipData clipData = ClipData.newPlainText(null, qq);
-            if (clipboard != null) {
-                clipboard.setPrimaryClip(clipData);
-                toast(R.string.copy_complete);
+            PopupMenu popupMenu = new PopupMenu(AboutActivity.this, view);
+            for (String qq : allQQ) {
+                popupMenu.getMenu().add(qq);
             }
+            popupMenu.setOnMenuItemClickListener(menuItem -> {
+                joinGroup(menuItem.getTitle().toString());
+                return true;
+            });
+            popupMenu.show();
         });
         vwUpdateLog.setOnClickListener(view -> moDialogHUD.showAssetMarkdown("updateLog.md"));
         vwFaq.setOnClickListener(view -> moDialogHUD.showAssetMarkdown("faq.md"));
         vwShare.setOnClickListener(view -> {
             String url = "https://www.coolapk.com/apk/com.gedoor.monkeybook";
-            Bitmap bitmap = encodeAsBitmap(url);
-            if (bitmap != null) {
-                moDialogHUD.showImageText(bitmap, url);
-            }
+            Single.create((SingleOnSubscribe<Bitmap>) emitter -> {
+                Bitmap bitmap = QRCodeEncoder.syncEncodeQRCode(url, 600);
+                emitter.onSuccess(bitmap);
+            }).compose(RxUtils::toSimpleSingle)
+                    .subscribe(new SingleObserver<Bitmap>() {
+                        @Override
+                        public void onSubscribe(Disposable d) {
+
+                        }
+
+                        @Override
+                        public void onSuccess(Bitmap bitmap) {
+                            if (bitmap != null) {
+                                moDialogHUD.showImageText(bitmap, url);
+                            }
+                        }
+
+                        @Override
+                        public void onError(Throwable e) {
+
+                        }
+                    });
         });
     }
 
-    @Override
-    protected void firstRequest() {
+    private void joinGroup(String name) {
+        String key;
+        if (name.equals(allQQ[0])) {
+            key = "-iolizL4cbJSutKRpeImHlXlpLDZnzeF";
+            if (joinQQGroupError(key)) {
+                copyName(name.substring(5));
+            }
+        } else if (name.equals(allQQ[1])) {
+            key = "6GlFKjLeIk5RhQnR3PNVDaKB6j10royo";
+            if (joinQQGroupError(key)) {
+                copyName(name.substring(5));
+            }
+        } else if (name.equals(allQQ[2])) {
+            key = "5Bm5w6OgLupXnICbYvbgzpPUgf0UlsJF";
+            if (joinQQGroupError(key)) {
+                copyName(name.substring(5));
+            }
+        } else {
+            copyName(name.substring(5));
+        }
+    }
 
+    private void copyName(String name) {
+        ClipboardManager clipboard = (ClipboardManager) this.getSystemService(Context.CLIPBOARD_SERVICE);
+        ClipData clipData = ClipData.newPlainText(null, name);
+        if (clipboard != null) {
+            clipboard.setPrimaryClip(clipData);
+            toast(R.string.copy_complete);
+        }
+    }
+
+    private boolean joinQQGroupError(String key) {
+        Intent intent = new Intent();
+        intent.setData(Uri.parse("mqqopensdkapi://bizAgent/qm/qr?url=http%3A%2F%2Fqm.qq.com%2Fcgi-bin%2Fqm%2Fqr%3Ffrom%3Dapp%26p%3Dandroid%26k%3D" + key));
+        // 此Flag可根据具体产品需要自定义，如设置，则在加群界面按返回，返回手Q主界面，不设置，按返回会返回到呼起产品界面    //intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        try {
+            startActivity(intent);
+            return false;
+        } catch (Exception e) {
+            return true;
+        }
     }
 
     void openIntent(String intentName, String address) {
@@ -203,22 +261,4 @@ public class AboutActivity extends MBaseActivity {
         return mo || super.onKeyDown(keyCode, event);
     }
 
-    public Bitmap encodeAsBitmap(String str) {
-        Bitmap bitmap = null;
-        BitMatrix result;
-        MultiFormatWriter multiFormatWriter = new MultiFormatWriter();
-        try {
-            Hashtable<EncodeHintType, Object> hst = new Hashtable();
-            hst.put(EncodeHintType.CHARACTER_SET, "UTF-8");
-            hst.put(EncodeHintType.ERROR_CORRECTION, ErrorCorrectionLevel.H);
-            result = multiFormatWriter.encode(str, BarcodeFormat.QR_CODE, 600, 600, hst);
-            BarcodeEncoder barcodeEncoder = new BarcodeEncoder();
-            bitmap = barcodeEncoder.createBitmap(result);
-        } catch (WriterException e) {
-            e.printStackTrace();
-        } catch (IllegalArgumentException iae) { // ?
-            return null;
-        }
-        return bitmap;
-    }
 }
