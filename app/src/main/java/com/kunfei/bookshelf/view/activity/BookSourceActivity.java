@@ -282,6 +282,9 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
             case R.id.action_del_select:
                 mPresenter.delData(adapter.getSelectDataList());
                 break;
+            case R.id.action_reset_book_source:
+                mPresenter.importBookSource(getString(R.string.default_source_url));
+                break;
             case R.id.action_check_book_source:
                 mPresenter.checkBookSource();
                 break;
