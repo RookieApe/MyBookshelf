@@ -23,14 +23,13 @@ import io.reactivex.ObservableOnSubscribe;
  * Created by GKF on 2018/1/28.
  * 编辑书源
  */
-
 public class SourceEditPresenter extends BasePresenterImpl<SourceEditContract.View> implements SourceEditContract.Presenter {
 
     @Override
     public Observable<Boolean> saveSource(BookSourceBean bookSource, BookSourceBean bookSourceOld) {
         return Observable.create((ObservableOnSubscribe<Boolean>) e -> {
             if (bookSourceOld != null && !Objects.equals(bookSource.getBookSourceUrl(), bookSourceOld.getBookSourceUrl())) {
-                DbHelper.getInstance().getmDaoSession().getBookSourceBeanDao().delete(bookSourceOld);
+                DbHelper.getDaoSession().getBookSourceBeanDao().delete(bookSourceOld);
             }
             BookSourceManager.addBookSource(bookSource);
             BookSourceManager.refreshBookSource();

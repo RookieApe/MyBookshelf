@@ -28,8 +28,8 @@ import com.kunfei.bookshelf.bean.BookInfoBean;
 import com.kunfei.bookshelf.bean.BookShelfBean;
 import com.kunfei.bookshelf.bean.BookSourceBean;
 import com.kunfei.bookshelf.bean.SearchBookBean;
+import com.kunfei.bookshelf.constant.RxBusTag;
 import com.kunfei.bookshelf.help.BlurTransformation;
-import com.kunfei.bookshelf.help.RxBusTag;
 import com.kunfei.bookshelf.model.BookSourceManager;
 import com.kunfei.bookshelf.presenter.BookDetailPresenter;
 import com.kunfei.bookshelf.presenter.ReadBookPresenter;
@@ -354,7 +354,7 @@ public class BookDetailActivity extends MBaseActivity<BookDetailContract.Present
 
         ivCover.setOnClickListener(view -> {
             if (mPresenter.getOpenFrom() == FROM_BOOKSHELF) {
-                BookInfoActivity.startThis(this, mPresenter.getBookShelf().getNoteUrl());
+                BookInfoEditActivity.startThis(this, mPresenter.getBookShelf().getNoteUrl());
             }
         });
 

@@ -43,7 +43,7 @@ import com.kunfei.bookshelf.presenter.contract.SourceEditContract;
 import com.kunfei.bookshelf.utils.RxUtils;
 import com.kunfei.bookshelf.utils.ScreenUtils;
 import com.kunfei.bookshelf.utils.SoftInputUtil;
-import com.kunfei.bookshelf.utils.Theme.ThemeStore;
+import com.kunfei.bookshelf.utils.theme.ThemeStore;
 import com.kunfei.bookshelf.view.popupwindow.KeyboardToolPop;
 
 import java.io.File;
@@ -313,6 +313,10 @@ public class SourceEditActivity extends MBaseActivity<SourceEditContract.Present
         BookSourceBean bookSourceBeanN = new BookSourceBean();
         bookSourceBeanN.setBookSourceName(trim(tieBookSourceName.getText()));
         bookSourceBeanN.setBookSourceUrl(trim(tieBookSourceUrl.getText()));
+        if (bookSourceBeanN.getBookSourceUrl().endsWith("/")) {
+            tieBookSourceUrl.setText(bookSourceBean.getBookSourceUrl().replaceAll("/+$", ""));
+            bookSourceBeanN.setBookSourceUrl(trim(tieBookSourceUrl.getText()));
+        }
         bookSourceBeanN.setLoginUrl(trim(tieLoginUrl.getText()));
         bookSourceBeanN.setBookSourceGroup(trim(tieBookSourceGroup.getText()));
         bookSourceBeanN.setRuleBookAuthor(trim(tieRuleBookAuthor.getText()));
@@ -551,6 +555,8 @@ public class SourceEditActivity extends MBaseActivity<SourceEditContract.Present
                             .subscribe(new SimpleObserver<Boolean>() {
                                 @Override
                                 public void onNext(Boolean aBoolean) {
+                                    bookSourceBean = getBookSource();
+                                    setResult(RESULT_OK);
                                     SourceDebugActivity.startThis(SourceEditActivity.this, getBookSource().getBookSourceUrl());
                                 }
 
@@ -562,7 +568,7 @@ public class SourceEditActivity extends MBaseActivity<SourceEditContract.Present
                 }
                 break;
             case android.R.id.home:
-                SoftInputUtil.hideIMM(this, getCurrentFocus());
+                SoftInputUtil.hideIMM(getCurrentFocus());
                 finish();
                 break;
         }

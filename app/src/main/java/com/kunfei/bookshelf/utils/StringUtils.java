@@ -6,12 +6,16 @@ import android.util.Base64;
 
 import com.kunfei.bookshelf.MApplication;
 
+import java.nio.charset.StandardCharsets;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.HashMap;
+import java.util.Objects;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import androidx.annotation.StringRes;
 
@@ -129,22 +133,29 @@ public class StringUtils {
     }
 
     private static HashMap<Character, Integer> getChnMap() {
-        String cnStr = "零一二三四五六七八九十";
         HashMap<Character, Integer> map = new HashMap<>();
+        String cnStr = "零一二三四五六七八九十";
         char[] c = cnStr.toCharArray();
         for (int i = 0; i <= 10; i++) {
             map.put(c[i], i);
         }
-        map.put('〇', 0);
+        cnStr = "〇壹贰叁肆伍陆柒捌玖拾";
+        c = cnStr.toCharArray();
+        for (int i = 0; i <= 10; i++) {
+            map.put(c[i], i);
+        }
         map.put('两', 2);
         map.put('百', 100);
+        map.put('佰', 100);
         map.put('千', 1000);
+        map.put('仟', 1000);
         map.put('万', 10000);
         map.put('亿', 100000000);
         return map;
     }
 
     // 修改自 https://binux.blog/2011/03/python-tools-chinese-digit/
+    @SuppressWarnings("ConstantConditions")
     public static int chineseNumToInt(String chNum) {
         int result = 0;
         int tmp = 0;
@@ -152,7 +163,7 @@ public class StringUtils {
         char[] cn = chNum.toCharArray();
 
         // "一零二五" 形式
-        if (cn.length > 1 && chNum.matches("^[〇零一二三四五六七八九]$")) {
+        if (cn.length > 1 && chNum.matches("^[〇零一二三四五六七八九壹贰叁肆伍陆柒捌玖]$")) {
             for (int i = 0; i < cn.length; i++) {
                 cn[i] = (char) (48 + ChnMap.get(cn[i]));
             }
@@ -207,7 +218,7 @@ public class StringUtils {
     public static String base64Decode(String str) {
         byte[] bytes = Base64.decode(str, Base64.DEFAULT);
         try {
-            return new String(bytes, "UTF-8");
+            return new String(bytes, StandardCharsets.UTF_8);
         } catch (Exception e) {
             return new String(bytes);
         }
@@ -286,5 +297,47 @@ public class StringUtils {
             return false;
         }
         return src.substring(0, obj.length()).equalsIgnoreCase(obj);
+    }
+
+    /**
+     * delimiter 分隔符
+     * elements 需要连接的字符数组
+     */
+    public static String join(CharSequence delimiter, CharSequence... elements) {
+        // 空指针判断
+        Objects.requireNonNull(delimiter);
+        Objects.requireNonNull(elements);
+
+        // Number of elements not likely worth Arrays.stream overhead.
+        // 此处用到了StringJoiner(JDK 8引入的类）
+        // 先构造一个以参数delimiter为分隔符的StringJoiner对象
+        StringJoiner joiner = new StringJoiner(delimiter);
+        for (CharSequence cs: elements) {
+            // 拼接字符
+            joiner.add(cs);
+        }
+        return joiner.toString();
+    }
+
+    public static String join(CharSequence delimiter, Iterable<? extends CharSequence> elements) {
+        Objects.requireNonNull(delimiter);
+        Objects.requireNonNull(elements);
+        StringJoiner joiner = new StringJoiner(delimiter);
+        for (CharSequence cs: elements) {
+            joiner.add(cs);
+        }
+        return joiner.toString();
+    }
+
+    public static boolean isContainNumber(String company) {
+        Pattern p = Pattern.compile("[0-9]");
+        Matcher m = p.matcher(company);
+        return m.find();
+    }
+
+    public static boolean isNumeric(String str){
+        Pattern pattern = Pattern.compile("[0-9]*");
+        Matcher isNum = pattern.matcher(str);
+        return isNum.matches();
     }
 }
