@@ -144,7 +144,6 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
         if (savedInstanceState != null) {
             noteUrl = savedInstanceState.getString("noteUrl");
             isAdd = savedInstanceState.getBoolean("isAdd");
-            aloudStatus = ReadAloudService.Status.valueOf(savedInstanceState.getString("aloudStatus", ReadAloudService.Status.STOP.name()));
         }
         readBookControl.initTextDrawableIndex();
         super.onCreate(savedInstanceState);
@@ -165,7 +164,6 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
         super.onSaveInstanceState(outState);
         if (mPresenter.getBookShelf() != null) {
             outState.putString("noteUrl", mPresenter.getBookShelf().getNoteUrl());
-            outState.putString("aloudStatus", aloudStatus.name());
             outState.putBoolean("isAdd", isAdd);
         }
     }
@@ -241,7 +239,7 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
         } else {
             mImmersionBar.showBarDivider();
         }
-        int barColorType = readBookControl.getNavbarColor();
+        int barColorType = readBookControl.getNavBarColor();
         if (llMenuBottom.getVisibility() == View.VISIBLE
                 || readAdjustPop.getVisibility() == View.VISIBLE
                 || readInterfacePop.getVisibility() == View.VISIBLE
@@ -425,7 +423,7 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
             @Override
             public void autoPage() {
                 if (ReadAloudService.running) {
-                    ReadBookActivity.this.toast("朗读正在运行,不能自动翻页");
+                    ReadBookActivity.this.toast(R.string.aloud_can_not_auto_page);
                     return;
                 }
                 ReadBookActivity.this.autoPage = !ReadBookActivity.this.autoPage;
@@ -605,7 +603,6 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
                 intent.setData(Uri.parse(url));
                 startActivity(intent);
             } catch (Exception e) {
-                e.printStackTrace();
                 toast(R.string.can_not_open);
             }
         });
@@ -866,7 +863,7 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
      */
     private void changeSource() {
         if (!NetworkUtil.isNetWorkAvailable()) {
-            toast("网络不可用，无法换源!");
+            toast(R.string.network_connection_unavailable);
             return;
         }
         ReadBookActivity.this.popMenuOut();
@@ -885,7 +882,7 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
      */
     private void download() {
         if (!NetworkUtil.isNetWorkAvailable()) {
-            toast("网络不可用，无法下载");
+            toast(R.string.network_connection_unavailable);
             return;
         }
         ReadBookActivity.this.popMenuOut();
@@ -906,7 +903,7 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
      */
     private void setCharset() {
         final String charset = mPresenter.getBookShelf().getBookInfoBean().getCharset();
-        moDialogHUD.showInputBox("输入编码",
+        moDialogHUD.showInputBox(getString(R.string.input_charset),
                 charset,
                 new String[]{"UTF-8", "GB2312", "GBK", "Unicode", "UTF-16", "UTF-16LE", "ASCII"},
                 (inputText -> {
@@ -927,7 +924,7 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
     private void setTextChapterRegex() {
         if (mPresenter.getBookShelf().getNoteUrl().toLowerCase().matches(".*\\.txt")) {
             final String regex = mPresenter.getBookShelf().getBookInfoBean().getChapterUrl();
-            moDialogHUD.showInputBox("TXT目录规则",
+            moDialogHUD.showInputBox(getString(R.string.text_chapter_list_rule),
                     regex,
                     null,
                     (inputText -> {
@@ -1259,7 +1256,7 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
             }
 
             @Override
-            public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
+            public void onAlreadyTurnedDownAndNoAsk(String... permission) {
                 PermissionUtils.requestMorePermissions(ReadBookActivity.this, permission, MApplication.RESULT__PERMS);
             }
         });
@@ -1300,12 +1297,12 @@ public class ReadBookActivity extends MBaseActivity<ReadBookContract.Presenter> 
 
             @Override
             public void onUserHasAlreadyTurnedDown(String... permission) {
-                ReadBookActivity.this.toast("打开外部书籍需获取存储权限");
+                ReadBookActivity.this.toast(R.string.open_local_book_per);
             }
 
             @Override
-            public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
-                ReadBookActivity.this.toast("打开外部书籍需获取存储权限");
+            public void onAlreadyTurnedDownAndNoAsk(String... permission) {
+                ReadBookActivity.this.toast(R.string.open_local_book_per);
                 PermissionUtils.toAppSetting(ReadBookActivity.this);
             }
         });

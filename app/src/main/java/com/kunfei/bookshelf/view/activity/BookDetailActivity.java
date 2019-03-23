@@ -196,7 +196,7 @@ public class BookDetailActivity extends MBaseActivity<BookDetailContract.Present
     @Override
     public void getBookShelfError() {
         tvLoading.setVisibility(View.VISIBLE);
-        tvLoading.setText("加载失败,点击重试");
+        tvLoading.setText(R.string.load_error_retry);
         tvLoading.setOnClickListener(v -> {
             tvLoading.setText(R.string.loading);
             tvLoading.setOnClickListener(null);
@@ -302,7 +302,6 @@ public class BookDetailActivity extends MBaseActivity<BookDetailContract.Present
                 BitIntentDataManager.getInstance().putData(key, mPresenter.getBookShelf().clone());
             } catch (CloneNotSupportedException e) {
                 BitIntentDataManager.getInstance().putData(key, mPresenter.getBookShelf());
-                e.printStackTrace();
             }
             startActivityByAnim(intent, android.R.anim.fade_in, android.R.anim.fade_out);
 

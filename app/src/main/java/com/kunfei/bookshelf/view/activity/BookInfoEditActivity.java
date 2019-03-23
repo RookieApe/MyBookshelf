@@ -172,11 +172,11 @@ public class BookInfoEditActivity extends MBaseActivity {
 
             @Override
             public void onUserHasAlreadyTurnedDown(String... permission) {
-                BookInfoEditActivity.this.toast("获取背景图片需存储权限");
+                BookInfoEditActivity.this.toast(R.string.bg_image_per);
             }
 
             @Override
-            public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
+            public void onAlreadyTurnedDownAndNoAsk(String... permission) {
                 PermissionUtils.requestMorePermissions(BookInfoEditActivity.this, permission, MApplication.RESULT__PERMS);
             }
         });
@@ -268,12 +268,12 @@ public class BookInfoEditActivity extends MBaseActivity {
 
             @Override
             public void onUserHasAlreadyTurnedDown(String... permission) {
-                BookInfoEditActivity.this.toast("获取背景图片需存储权限");
+                BookInfoEditActivity.this.toast(R.string.bg_image_per);
             }
 
             @Override
-            public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
-                BookInfoEditActivity.this.toast("获取背景图片需存储权限");
+            public void onAlreadyTurnedDownAndNoAsk(String... permission) {
+                BookInfoEditActivity.this.toast(R.string.bg_image_per);
                 PermissionUtils.toAppSetting(BookInfoEditActivity.this);
             }
         });

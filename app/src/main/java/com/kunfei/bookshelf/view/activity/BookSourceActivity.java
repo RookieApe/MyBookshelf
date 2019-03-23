@@ -20,13 +20,14 @@ import com.kunfei.bookshelf.bean.BookSourceBean;
 import com.kunfei.bookshelf.constant.RxBusTag;
 import com.kunfei.bookshelf.dao.BookSourceBeanDao;
 import com.kunfei.bookshelf.dao.DbHelper;
-import com.kunfei.bookshelf.help.ACache;
 import com.kunfei.bookshelf.help.ItemTouchCallback;
 import com.kunfei.bookshelf.model.BookSourceManager;
 import com.kunfei.bookshelf.presenter.BookSourcePresenter;
 import com.kunfei.bookshelf.presenter.contract.BookSourceContract;
+import com.kunfei.bookshelf.utils.ACache;
 import com.kunfei.bookshelf.utils.FileUtils;
 import com.kunfei.bookshelf.utils.PermissionUtils;
+import com.kunfei.bookshelf.utils.StringUtils;
 import com.kunfei.bookshelf.utils.theme.ATH;
 import com.kunfei.bookshelf.utils.theme.ThemeStore;
 import com.kunfei.bookshelf.view.adapter.BookSourceAdapter;
@@ -383,7 +384,7 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
             }
 
             @Override
-            public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
+            public void onAlreadyTurnedDownAndNoAsk(String... permission) {
                 PermissionUtils.requestMorePermissions(BookSourceActivity.this, permission, MApplication.RESULT__PERMS);
             }
         });
@@ -391,10 +392,11 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
 
     private void importBookSourceOnLine() {
         String cacheUrl = ACache.get(this).getAsString("sourceUrl");
-        moDialogHUD.showInputBox("输入书源网址",
+        moDialogHUD.showInputBox(getString(R.string.input_book_source_url),
                 cacheUrl,
                 new String[]{cacheUrl},
                 inputText -> {
+                    inputText = StringUtils.trim(inputText);
                     ACache.get(this).put("sourceUrl", inputText);
                     mPresenter.importBookSource(inputText);
                 });
@@ -422,7 +424,7 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
             }
 
             @Override
-            public void onUserHasAlreadyTurnedDownAndDontAsk(String... permission) {
+            public void onAlreadyTurnedDownAndNoAsk(String... permission) {
                 BookSourceActivity.this.toast(R.string.import_book_source);
                 PermissionUtils.toAppSetting(BookSourceActivity.this);
             }
@@ -438,7 +440,7 @@ public class BookSourceActivity extends MBaseActivity<BookSourceContract.Present
                     refreshBookSource();
                     break;
                 case IMPORT_SOURCE:
-                    if (data != null) {
+                    if (data != null && data.getData() != null) {
                         mPresenter.importBookSourceLocal(FileUtils.getPath(this, data.getData()));
                     }
                     break;
