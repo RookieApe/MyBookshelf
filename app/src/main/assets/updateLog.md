@@ -3,9 +3,63 @@
 ### 捐赠里点击红包搜索码可开启高级功能!
 ## 更新日志
 
-**2019/03/22**
-* 修复一个引起崩溃的BUG
+**2019/04/15**
+* xpath添加&&,||规则
+* 修复部分手机动画问题
+
+**2019/04/14**
+* 添加{{js}}规则写法会替换为js执行结果
+* 修复手动排序置顶失效的问题
+
+**2019/04/12**
+* 修复设置夜间模式会多次Recreate的问题
+* WebDav恢复时添加存储权限检查
+* 书源调试添加时间戳
+* 自定义js方法
+```renderscript
+//获取网页内容,url支持搜索url规则
+java.ajax(url)
+//base64解码
+java.base64Decoder(string)
+//设置需解析的内容Object
+java.setContent(html)
+//输入规则String获取文本列表List<String>
+java.getStringList(rule)
+//输入规则String获取文本String
+java.getString(rule)
+//输入规则String获取节点列表List<Object>
+java.getElements(ruleStr)
+```
+
+**2019/04/10**
+* 发现规则支持js生成规则文本, \<js>\</js>
+
+**2019/04/09**
+* 阅读时如果原书源被删除会自动换源
+* 修改JSoup解析文件，修复css规则解析 by mabDc
+* 其它一些优化
+
+**2019/04/08**
+* 优化内存使用
+* 优化替换净化速度
+
+**2019/04/01**
+* 修复耳机键不能唤起阅读的BUG
+* 搜索和发现可以不写baseUrl
+* 添加字间距调整
+
+**2019/03/30**
+* 仿真翻页背面加回
+* 修复在有些手机上切换夜间模式,书架不跟着切换的bug
+
+**2019/03/29**
+* 添加Tip边距调节
+* 更新fireBase版本
+
+**2019/03/26**
+* 添加RxJavaPlugins.setErrorHandler(Functions.emptyConsumer());防止rxJava内部错误导致崩溃
 * 去除打开软件时的权限获取提示
+* fix SourceDebug variable missing bug by mabDc was merged a day ago 
 
 **2019/03/21**
 * 同时解决了背景色差和翻页问题

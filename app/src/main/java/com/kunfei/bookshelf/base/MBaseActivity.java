@@ -15,10 +15,12 @@ import android.view.MenuItem;
 import android.view.View;
 
 import com.google.android.material.snackbar.Snackbar;
+import com.hwangjr.rxbus.RxBus;
 import com.kunfei.basemvplib.BaseActivity;
 import com.kunfei.basemvplib.impl.IPresenter;
 import com.kunfei.bookshelf.MApplication;
 import com.kunfei.bookshelf.R;
+import com.kunfei.bookshelf.constant.RxBusTag;
 import com.kunfei.bookshelf.utils.ColorUtil;
 import com.kunfei.bookshelf.utils.bar.ImmersionBar;
 import com.kunfei.bookshelf.utils.theme.MaterialValueHelper;
@@ -28,7 +30,6 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 
 import androidx.annotation.Nullable;
-import androidx.appcompat.app.AppCompatDelegate;
 
 public abstract class MBaseActivity<T extends IPresenter> extends BaseActivity<T> {
     private static final String TAG = MBaseActivity.class.getSimpleName();
@@ -200,15 +201,16 @@ public abstract class MBaseActivity<T extends IPresenter> extends BaseActivity<T
      * @return 是否夜间模式
      */
     public boolean isNightTheme() {
-        return preferences.getBoolean("nightTheme", false);
+        return MApplication.getInstance().isNightTheme();
     }
 
     protected void setNightTheme(boolean isNightTheme) {
         preferences.edit()
                 .putBoolean("nightTheme", isNightTheme)
                 .apply();
+        MApplication.getInstance().initNightTheme();
         MApplication.getInstance().upThemeStore();
-        initTheme();
+        RxBus.get().post(RxBusTag.RECREATE, true);
     }
 
     protected void initTheme() {
@@ -216,11 +218,6 @@ public abstract class MBaseActivity<T extends IPresenter> extends BaseActivity<T
             setTheme(R.style.CAppTheme);
         } else {
             setTheme(R.style.CAppThemeBarDark);
-        }
-        if (isNightTheme()) {
-            getDelegate().setLocalNightMode(AppCompatDelegate.MODE_NIGHT_YES);
-        } else {
-            getDelegate().setLocalNightMode(AppCompatDelegate.MODE_NIGHT_NO);
         }
     }
 
@@ -243,5 +240,6 @@ public abstract class MBaseActivity<T extends IPresenter> extends BaseActivity<T
             snackbar.dismiss();
         }
     }
+
 
 }

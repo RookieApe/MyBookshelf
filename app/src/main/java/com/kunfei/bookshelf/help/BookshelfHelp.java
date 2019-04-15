@@ -80,10 +80,6 @@ public class BookshelfHelp {
         return formatFileName(chapterIndex, chapterName);
     }
 
-    public static void setChapterIsCached(String bookName, ChapterListBean chapter, boolean cached) {
-        setChapterIsCached(bookName + "-" + chapter.getTag(), chapter.getDurChapterIndex(), cached);
-    }
-
     public static boolean setChapterIsCached(String bookPathName, Integer index, boolean cached) {
         bookPathName = formatFolderName(bookPathName);
         if (!chapterCaches.containsKey(bookPathName))
@@ -324,12 +320,6 @@ public class BookshelfHelp {
         removeFromBookShelf(bookShelfBean, false);
     }
 
-    public static void saveBookSource(BookSourceBean bookSourceBean) {
-        if (bookSourceBean != null) {
-            DbHelper.getDaoSession().getBookSourceBeanDao().insertOrReplace(bookSourceBean);
-        }
-    }
-
     /**
      * 保存书籍
      */
@@ -362,6 +352,7 @@ public class BookshelfHelp {
         bookInfo.setIntroduce(searchBookBean.getIntroduce());
         bookInfo.setChapterUrl(searchBookBean.getChapterUrl());
         bookShelfBean.setBookInfoBean(bookInfo);
+        bookShelfBean.setVariable(searchBookBean.getVariable());
         return bookShelfBean;
     }
 

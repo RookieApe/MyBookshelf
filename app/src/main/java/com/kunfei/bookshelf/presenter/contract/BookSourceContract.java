@@ -35,6 +35,9 @@ public interface BookSourceContract {
 
         void showSnackBar(String msg, int length);
 
+        void setResult(int resultCode);
+
+        int getSort();
     }
 
 }

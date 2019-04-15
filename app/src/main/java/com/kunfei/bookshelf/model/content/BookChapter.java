@@ -8,7 +8,6 @@ import com.kunfei.bookshelf.base.BaseModelImpl;
 import com.kunfei.bookshelf.bean.BookShelfBean;
 import com.kunfei.bookshelf.bean.BookSourceBean;
 import com.kunfei.bookshelf.bean.ChapterListBean;
-import com.kunfei.bookshelf.model.analyzeRule.AnalyzeCollection;
 import com.kunfei.bookshelf.model.analyzeRule.AnalyzeRule;
 import com.kunfei.bookshelf.model.analyzeRule.AnalyzeUrl;
 
@@ -53,7 +52,7 @@ class BookChapter {
             if (webChapterBean.nextUrlList.size() > 1) {
                 List<String> chapterUrlS = new ArrayList<>(webChapterBean.nextUrlList);
                 for (int i = 0; i < chapterUrlS.size(); i++) {
-                    AnalyzeUrl analyzeUrl = new AnalyzeUrl(chapterUrlS.get(i), null, null, headerMap);
+                    AnalyzeUrl analyzeUrl = new AnalyzeUrl(chapterUrlS.get(i), headerMap, tag);
                     try {
                         String body;
                         Response<String> response = BaseModelImpl.getInstance().getResponseO(analyzeUrl)
@@ -72,7 +71,7 @@ class BookChapter {
                 usedUrl.add(bookShelfBean.getBookInfoBean().getChapterUrl());
                 while (webChapterBean.nextUrlList.size() > 0 && !usedUrl.contains(webChapterBean.nextUrlList.get(0))) {
                     usedUrl.add(webChapterBean.nextUrlList.get(0));
-                    AnalyzeUrl analyzeUrl = new AnalyzeUrl(webChapterBean.nextUrlList.get(0), null, null, headerMap);
+                    AnalyzeUrl analyzeUrl = new AnalyzeUrl(webChapterBean.nextUrlList.get(0), headerMap, tag);
                     try {
                         String body;
                         Response<String> response = BaseModelImpl.getInstance().getResponseO(analyzeUrl)
@@ -103,10 +102,10 @@ class BookChapter {
         List<ChapterListBean> chapterBeans = new ArrayList<>();
         List<String> nextUrlList = new ArrayList<>();
 
-        analyzer.setContent(s);
+        analyzer.setContent(s, chapterUrl);
 
         if (!TextUtils.isEmpty(bookSourceBean.getRuleChapterUrlNext())) {
-            nextUrlList = analyzer.getStringList(bookSourceBean.getRuleChapterUrlNext(), chapterUrl);
+            nextUrlList = analyzer.getStringList(bookSourceBean.getRuleChapterUrlNext(), true);
 
             int thisUrlIndex = nextUrlList.indexOf(chapterUrl);
             if (thisUrlIndex != -1) {
@@ -114,11 +113,11 @@ class BookChapter {
             }
         }
 
-        AnalyzeCollection collections = analyzer.getElements(ruleChapterList);
-        while (collections.hasNext()) {
-            collections.next(analyzer);
+        List<Object> collections = analyzer.getElements(ruleChapterList);
+        for (Object object : collections) {
+            analyzer.setContent(object, chapterUrl);
             String name = analyzer.getString(bookSourceBean.getRuleChapterName());
-            String url = analyzer.getString(bookSourceBean.getRuleContentUrl(), chapterUrl);
+            String url = analyzer.getString(bookSourceBean.getRuleContentUrl(), true);
             if (!isEmpty(name) && !isEmpty(url)) {
                 ChapterListBean temp = new ChapterListBean();
                 temp.setTag(tag);
@@ -127,7 +126,6 @@ class BookChapter {
                 chapterBeans.add(temp);
             }
         }
-
         return new WebChapterBean<>(chapterBeans, nextUrlList);
     }
 
