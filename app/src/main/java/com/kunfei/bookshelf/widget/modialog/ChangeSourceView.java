@@ -11,22 +11,26 @@ import android.widget.ImageButton;
 import android.widget.PopupMenu;
 import android.widget.TextView;
 
+import androidx.appcompat.widget.SearchView;
+import androidx.recyclerview.widget.LinearLayoutManager;
+
 import com.hwangjr.rxbus.RxBus;
 import com.hwangjr.rxbus.annotation.Subscribe;
 import com.hwangjr.rxbus.annotation.Tag;
 import com.hwangjr.rxbus.thread.EventThread;
+import com.kunfei.bookshelf.DbHelper;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.bean.BookShelfBean;
 import com.kunfei.bookshelf.bean.BookSourceBean;
 import com.kunfei.bookshelf.bean.SearchBookBean;
 import com.kunfei.bookshelf.constant.RxBusTag;
-import com.kunfei.bookshelf.dao.DbHelper;
 import com.kunfei.bookshelf.dao.SearchBookBeanDao;
 import com.kunfei.bookshelf.help.BookshelfHelp;
 import com.kunfei.bookshelf.model.BookSourceManager;
 import com.kunfei.bookshelf.model.SearchBookModel;
 import com.kunfei.bookshelf.model.UpLastChapterModel;
 import com.kunfei.bookshelf.utils.StringUtils;
+import com.kunfei.bookshelf.view.activity.SourceEditActivity;
 import com.kunfei.bookshelf.view.adapter.ChangeSourceAdapter;
 import com.kunfei.bookshelf.widget.recycler.refresh.RefreshRecyclerView;
 
@@ -35,8 +39,6 @@ import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
 
-import androidx.appcompat.widget.SearchView;
-import androidx.recyclerview.widget.LinearLayoutManager;
 import io.reactivex.Single;
 import io.reactivex.SingleObserver;
 import io.reactivex.SingleOnSubscribe;
@@ -87,6 +89,7 @@ public class ChangeSourceView {
             PopupMenu popupMenu = new PopupMenu(context, view);
             popupMenu.getMenu().add(0, 0, 1, "禁用书源");
             popupMenu.getMenu().add(0, 0, 2, "删除书源");
+            popupMenu.getMenu().add(0, 0, 3, "编辑书源");
             popupMenu.setOnMenuItemClickListener(menuItem -> {
                 if (sourceBean != null) {
                     switch (menuItem.getOrder()) {
@@ -98,6 +101,9 @@ public class ChangeSourceView {
                         case 2:
                             BookSourceManager.removeBookSource(sourceBean);
                             adapter.removeData(pos);
+                            break;
+                        case 3:
+                            SourceEditActivity.startThis(context, sourceBean);
                             break;
                     }
                 }
@@ -132,18 +138,6 @@ public class ChangeSourceView {
             public void loadMoreFinish(Boolean value) {
                 ibtStop.setVisibility(View.INVISIBLE);
                 rvSource.finishRefresh(true);
-            }
-
-            @Override
-            public Boolean checkIsExist(SearchBookBean searchBookBean) {
-                boolean result = false;
-                for (int i = 0; i < adapter.getICount(); i++) {
-                    if (adapter.getSearchBookBeans().get(i).getNoteUrl().equals(searchBookBean.getNoteUrl()) && adapter.getSearchBookBeans().get(i).getTag().equals(searchBookBean.getTag())) {
-                        result = true;
-                        break;
-                    }
-                }
-                return result;
             }
 
             @Override
@@ -292,7 +286,7 @@ public class ChangeSourceView {
                         searchBookBean.setIsCurrentSource(false);
                     }
                     boolean saveBookSource = false;
-                    BookSourceBean bookSourceBean = BookshelfHelp.getBookSourceByTag(searchBookBean.getTag());
+                    BookSourceBean bookSourceBean = BookSourceManager.getBookSourceByUrl(searchBookBean.getTag());
                     if (searchBookBean.getSearchTime() < 60 && bookSourceBean != null) {
                         bookSourceBean.increaseWeight(100 / (10 + searchBookBean.getSearchTime()));
                         saveBookSource = true;

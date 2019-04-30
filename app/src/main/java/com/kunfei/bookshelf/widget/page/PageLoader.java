@@ -197,8 +197,8 @@ public abstract class PageLoader {
         tipBottomTop = tipMarginTopHeight - fontMetrics.top;
         tipBottomBot = mDisplayHeight - fontMetrics.bottom - tipMarginBottomHeight;
         tipDistance = ScreenUtils.dpToPx(DEFAULT_MARGIN_WIDTH);
-        tipMarginLeft = readBookControl.getTipPaddingLeft();
-        float tipMarginRight = readBookControl.getTipPaddingRight();
+        tipMarginLeft = ScreenUtils.dpToPx(readBookControl.getTipPaddingLeft());
+        float tipMarginRight = ScreenUtils.dpToPx(readBookControl.getTipPaddingRight());
         displayRightEnd = mDisplayWidth - tipMarginRight;
         tipVisibleWidth = mDisplayWidth - tipMarginLeft - tipMarginRight;
 
@@ -498,7 +498,7 @@ public abstract class PageLoader {
      */
     public boolean updateBattery(int level) {
         if (mBatteryLevel == level) {
-            return true;
+            return false;
         }
         mBatteryLevel = level;
         if (readBookControl.getHideStatusBar() && readBookControl.getShowTimeBattery()) {
@@ -510,7 +510,7 @@ public abstract class PageLoader {
             mPageView.invalidate();
             return true;
         }
-        return true;
+        return false;
     }
 
     /**
@@ -809,11 +809,9 @@ public abstract class PageLoader {
                 txtPage = mNextChapter.getPage(0);
             }
         }
-        if (txtChapter != null) {
-            if (bitmap != null)
-                drawBackground(bitmap, txtChapter, txtPage);
-                drawContent(bitmap, txtChapter, txtPage);
-        }
+        if (bitmap != null)
+            drawBackground(bitmap, txtChapter, txtPage);
+        drawContent(bitmap, txtChapter, txtPage);
     }
 
     /**

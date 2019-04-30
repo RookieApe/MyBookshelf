@@ -3,13 +3,15 @@ package com.kunfei.bookshelf.presenter;
 import android.content.Intent;
 import android.text.TextUtils;
 
+import androidx.annotation.NonNull;
+
 import com.hwangjr.rxbus.RxBus;
 import com.hwangjr.rxbus.annotation.Subscribe;
 import com.hwangjr.rxbus.annotation.Tag;
 import com.hwangjr.rxbus.thread.EventThread;
 import com.kunfei.basemvplib.BasePresenterImpl;
+import com.kunfei.basemvplib.BitIntentDataManager;
 import com.kunfei.basemvplib.impl.IView;
-import com.kunfei.bookshelf.BitIntentDataManager;
 import com.kunfei.bookshelf.base.observer.MyObserver;
 import com.kunfei.bookshelf.bean.BookShelfBean;
 import com.kunfei.bookshelf.bean.BookSourceBean;
@@ -23,7 +25,6 @@ import com.kunfei.bookshelf.presenter.contract.BookDetailContract;
 import com.kunfei.bookshelf.utils.RxUtils;
 import com.kunfei.bookshelf.widget.modialog.ChangeSourceView;
 
-import androidx.annotation.NonNull;
 import io.reactivex.Observable;
 import io.reactivex.ObservableOnSubscribe;
 import io.reactivex.Observer;
@@ -46,7 +47,6 @@ public class BookDetailPresenter extends BasePresenterImpl<BookDetailContract.Vi
         if (openFrom == FROM_BOOKSHELF) {
             String key = intent.getStringExtra("data_key");
             bookShelf = (BookShelfBean) BitIntentDataManager.getInstance().getData(key);
-            BitIntentDataManager.getInstance().cleanData(key);
             if (bookShelf == null) {
                 String noteUrl = intent.getStringExtra("noteUrl");
                 if (!TextUtils.isEmpty(noteUrl)) {
@@ -235,13 +235,14 @@ public class BookDetailPresenter extends BasePresenterImpl<BookDetailContract.Vi
                         try {
                             long currentTime = System.currentTimeMillis();
                             String bookName = bookShelf.getBookInfoBean().getName();
-                            BookSourceBean bookSourceBean = BookshelfHelp.getBookSourceByTag(tag);
+                            BookSourceBean bookSourceBean = BookSourceManager.getBookSourceByUrl(tag);
                             if (ChangeSourceView.savedSource.getBookSource() != null && currentTime - ChangeSourceView.savedSource.getSaveTime() < 60000 && ChangeSourceView.savedSource.getBookName().equals(bookName))
                                 ChangeSourceView.savedSource.getBookSource().increaseWeight(-450);
                             BookSourceManager.saveBookSource(ChangeSourceView.savedSource.getBookSource());
                             ChangeSourceView.savedSource.setBookName(bookName);
                             ChangeSourceView.savedSource.setSaveTime(currentTime);
                             ChangeSourceView.savedSource.setBookSource(bookSourceBean);
+                            assert bookSourceBean != null;
                             bookSourceBean.increaseWeightBySelection();
                             BookSourceManager.saveBookSource(bookSourceBean);
                         } catch (Exception e) {
@@ -271,8 +272,9 @@ public class BookDetailPresenter extends BasePresenterImpl<BookDetailContract.Vi
     }
 
     @Subscribe(thread = EventThread.MAIN_THREAD,
-            tags = {@Tag(RxBusTag.HAD_ADD_BOOK), @Tag(RxBusTag.HAD_REMOVE_BOOK), @Tag(RxBusTag.UPDATE_BOOK_PROGRESS)})
+            tags = {@Tag(RxBusTag.HAD_ADD_BOOK), @Tag(RxBusTag.UPDATE_BOOK_PROGRESS)})
     public void hadAddOrRemoveBook(BookShelfBean bookShelfBean) {
+        bookShelf = bookShelfBean;
         mView.updateView();
     }
 }

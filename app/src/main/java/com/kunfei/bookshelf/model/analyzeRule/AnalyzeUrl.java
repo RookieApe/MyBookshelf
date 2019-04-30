@@ -3,6 +3,8 @@ package com.kunfei.bookshelf.model.analyzeRule;
 import android.annotation.SuppressLint;
 import android.text.TextUtils;
 
+import androidx.annotation.Keep;
+
 import com.google.gson.Gson;
 import com.kunfei.bookshelf.utils.StringUtils;
 import com.kunfei.bookshelf.utils.UrlEncoderUtils;
@@ -16,7 +18,6 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.script.ScriptException;
 import javax.script.SimpleBindings;
 
 import static com.kunfei.bookshelf.constant.AppConstant.EXP_PATTERN;
@@ -28,7 +29,7 @@ import static com.kunfei.bookshelf.constant.AppConstant.SCRIPT_ENGINE;
  * Created by GKF on 2018/1/24.
  * 搜索URL规则解析
  */
-
+@Keep
 public class AnalyzeUrl {
     private static final Pattern headerPattern = Pattern.compile("@Header:\\{.+?\\}", Pattern.CASE_INSENSITIVE);
     private static final Pattern pagePattern = Pattern.compile("\\{.*?\\}");
@@ -61,12 +62,13 @@ public class AnalyzeUrl {
         }
         //分离编码规则
         ruleUrl = splitCharCode(ruleUrl);
-        //设置页数
-        if (page != null) {
-            ruleUrl = analyzePage(ruleUrl, page);
-        }
+        //判断是否有下一页
+        if (page != null && page > 1 && !ruleUrl.contains("searchPage"))
+            throw new Exception("没有下一页");
         //替换js
-        ruleUrl = replaceJs(ruleUrl, baseUrl);
+        ruleUrl = replaceJs(ruleUrl, baseUrl, page, key);
+        //设置页数
+        ruleUrl = analyzePage(ruleUrl, page);
         //执行规则列表
         List<String> ruleList = splitRule(ruleUrl);
         for (String rule : ruleList) {
@@ -137,7 +139,8 @@ public class AnalyzeUrl {
     /**
      * 解析页数
      */
-    private String analyzePage(String ruleUrl, final int searchPage) {
+    private String analyzePage(String ruleUrl, final Integer searchPage) {
+        if (searchPage == null) return ruleUrl;
         Matcher matcher = pagePattern.matcher(ruleUrl);
         while (matcher.find()) {
             String[] pages = matcher.group().substring(1, matcher.group().length() - 1).split(",");
@@ -155,12 +158,15 @@ public class AnalyzeUrl {
     /**
      * 替换js
      */
-    private String replaceJs(String ruleUrl, String baseUrl) throws ScriptException {
+    @SuppressLint("DefaultLocale")
+    private String replaceJs(String ruleUrl, String baseUrl, Integer searchPage, String searchKey) throws Exception {
         if(ruleUrl.contains("{{") && ruleUrl.contains("}}")){
             Object jsEval;
             StringBuffer sb = new StringBuffer(ruleUrl.length());
             SimpleBindings simpleBindings = new SimpleBindings(){{
                 this.put("baseUrl", baseUrl);
+                this.put("searchPage", searchPage);
+                this.put("searchKey", searchKey);
             }};
             Matcher expMatcher = EXP_PATTERN.matcher(ruleUrl);
             while (expMatcher.find()){

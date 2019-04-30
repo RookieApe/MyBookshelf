@@ -78,7 +78,7 @@ public class SimulationPageAnim extends HorizonPageAnim {
         createDrawable();
 
         ColorMatrix cm = new ColorMatrix();//设置颜色数组
-        float array[] = {1, 0, 0, 0, 0,
+        float[] array = {1, 0, 0, 0, 0,
                 0, 1, 0, 0, 0,
                 0, 0, 1, 0, 0,
                 0, 0, 0, 1, 0};
@@ -93,27 +93,23 @@ public class SimulationPageAnim extends HorizonPageAnim {
 
     @Override
     public void drawMove(Canvas canvas) {
-        switch (mDirection) {
-            case NEXT:
-                calcPoints();
-                drawCurrentPageArea(canvas, mCurBitmap, mPath0);//绘制翻页时的正面页
-                drawNextPageAreaAndShadow(canvas, mNextBitmap);
-                drawCurrentPageShadow(canvas);
-                drawCurrentBackArea(canvas, blurBackImage ? blurCurBitmap : mCurBitmap);
-                break;
-            default:
-                calcPoints();
-                drawCurrentPageArea(canvas, mPreBitmap, mPath0);
-                drawNextPageAreaAndShadow(canvas, mCurBitmap);
-                drawCurrentPageShadow(canvas);
-                drawCurrentBackArea(canvas, blurBackImage ? blurPreBitmap : mPreBitmap);
-                break;
+        if (mDirection == Direction.NEXT) {
+            calcPoints();
+            drawCurrentPageArea(canvas, mCurBitmap, mPath0);//绘制翻页时的正面页
+            drawNextPageAreaAndShadow(canvas, mNextBitmap);
+            drawCurrentPageShadow(canvas);
+            drawCurrentBackArea(canvas, blurBackImage ? blurCurBitmap : mCurBitmap);
+        } else {
+            calcPoints();
+            drawCurrentPageArea(canvas, mPreBitmap, mPath0);
+            drawNextPageAreaAndShadow(canvas, mCurBitmap);
+            drawCurrentPageShadow(canvas);
+            drawCurrentBackArea(canvas, blurBackImage ? blurPreBitmap : mPreBitmap);
         }
     }
 
     @Override
     public void startAnim() {
-        super.startAnim();
         int dx, dy;
         // dx 水平方向滑动的距离，负值会使滚动向左滚动
         // dy 垂直方向滑动的距离，负值会使滚动向上滚动
@@ -147,6 +143,7 @@ public class SimulationPageAnim extends HorizonPageAnim {
             }
         }
         mScroller.startScroll((int) mTouchX, (int) mTouchY, dx, dy, animationSpeed);
+        super.startAnim();
     }
 
     @Override
@@ -418,11 +415,9 @@ public class SimulationPageAnim extends HorizonPageAnim {
     }
 
     @Override
-    public void changePageEnd() {
-        super.changePageEnd();
-
+    public boolean changePage() {
         if (!blurBackImage)
-            return;
+            return super.changePage();
 
         switch (mDirection) {
             case NEXT:
@@ -442,6 +437,7 @@ public class SimulationPageAnim extends HorizonPageAnim {
                 }
                 break;
         }
+        return super.changePage();
     }
 
     public void onPageDrawn(int pageOnCur) {

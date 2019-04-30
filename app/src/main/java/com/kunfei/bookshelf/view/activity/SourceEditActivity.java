@@ -2,6 +2,7 @@ package com.kunfei.bookshelf.view.activity;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
@@ -22,6 +23,14 @@ import android.widget.LinearLayout;
 import android.widget.PopupWindow;
 import android.widget.ScrollView;
 
+import androidx.annotation.NonNull;
+import androidx.appcompat.app.ActionBar;
+import androidx.appcompat.app.AlertDialog;
+import androidx.appcompat.widget.AppCompatEditText;
+import androidx.appcompat.widget.Toolbar;
+import androidx.core.content.FileProvider;
+import androidx.fragment.app.Fragment;
+
 import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.textfield.TextInputLayout;
 import com.google.gson.Gson;
@@ -31,7 +40,7 @@ import com.google.zxing.EncodeHintType;
 import com.google.zxing.MultiFormatWriter;
 import com.google.zxing.common.BitMatrix;
 import com.google.zxing.qrcode.decoder.ErrorCorrectionLevel;
-import com.kunfei.bookshelf.BitIntentDataManager;
+import com.kunfei.basemvplib.BitIntentDataManager;
 import com.kunfei.bookshelf.BuildConfig;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.base.MBaseActivity;
@@ -40,6 +49,7 @@ import com.kunfei.bookshelf.bean.BookSourceBean;
 import com.kunfei.bookshelf.model.BookSourceManager;
 import com.kunfei.bookshelf.presenter.SourceEditPresenter;
 import com.kunfei.bookshelf.presenter.contract.SourceEditContract;
+import com.kunfei.bookshelf.service.ShareService;
 import com.kunfei.bookshelf.utils.RxUtils;
 import com.kunfei.bookshelf.utils.ScreenUtils;
 import com.kunfei.bookshelf.utils.SoftInputUtil;
@@ -49,16 +59,10 @@ import com.kunfei.bookshelf.view.popupwindow.KeyboardToolPop;
 
 import java.io.File;
 import java.io.FileOutputStream;
+import java.util.Collections;
 import java.util.Hashtable;
 import java.util.List;
 
-import androidx.annotation.NonNull;
-import androidx.appcompat.app.ActionBar;
-import androidx.appcompat.app.AlertDialog;
-import androidx.appcompat.widget.AppCompatEditText;
-import androidx.appcompat.widget.Toolbar;
-import androidx.core.content.FileProvider;
-import androidx.fragment.app.Fragment;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import io.reactivex.Observable;
@@ -223,6 +227,12 @@ public class SourceEditActivity extends MBaseActivity<SourceEditContract.Present
             Intent intent = new Intent(fragment.getContext(), SourceEditActivity.class);
             intent.putExtra("data_key", key);
             fragment.startActivityForResult(intent, EDIT_SOURCE);
+        } else if (object instanceof Context) {
+            Context context = (Context) object;
+            Intent intent = new Intent(context, SourceEditActivity.class);
+            intent.putExtra("data_key", key);
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+            context.startActivity(intent);
         }
     }
 
@@ -266,7 +276,6 @@ public class SourceEditActivity extends MBaseActivity<SourceEditContract.Present
                 bookSourceBean = (BookSourceBean) BitIntentDataManager.getInstance().getData(key);
                 serialNumber = bookSourceBean.getSerialNumber();
                 enable = bookSourceBean.getEnable();
-                BitIntentDataManager.getInstance().cleanData(key);
             }
         }
     }
@@ -548,6 +557,9 @@ public class SourceEditActivity extends MBaseActivity<SourceEditContract.Present
                 break;
             case R.id.action_share_it:
                 shareBookSource();
+                break;
+            case R.id.action_share_wifi:
+                ShareService.startThis(this, Collections.singletonList(getBookSource()));
                 break;
             case R.id.action_rule_summary:
                 openRuleSummary();

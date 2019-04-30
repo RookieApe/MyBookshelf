@@ -704,6 +704,9 @@ public class ReadBookControl {
     }
 
     public int getPageMode() {
+        if (MApplication.isEInkMode) {
+            return 4;
+        }
         return pageMode;
     }
 
@@ -764,5 +767,9 @@ public class ReadBookControl {
         } catch (Settings.SettingNotFoundException ignored) {
         }
         return value;
+    }
+
+    public boolean disableScrollClickTurn() {
+        return preferences.getBoolean("disableScrollClickTurn", false);
     }
 }

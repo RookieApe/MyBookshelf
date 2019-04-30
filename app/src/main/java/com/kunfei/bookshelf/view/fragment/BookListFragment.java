@@ -8,7 +8,15 @@ import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.kunfei.bookshelf.BitIntentDataManager;
+import androidx.annotation.Nullable;
+import androidx.recyclerview.widget.GridLayoutManager;
+import androidx.recyclerview.widget.ItemTouchHelper;
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
+import androidx.viewpager.widget.ViewPager;
+
+import com.kunfei.basemvplib.BitIntentDataManager;
 import com.kunfei.bookshelf.MApplication;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.base.MBaseFragment;
@@ -29,12 +37,6 @@ import com.kunfei.bookshelf.view.adapter.base.OnItemClickListenerTwo;
 
 import java.util.List;
 
-import androidx.annotation.Nullable;
-import androidx.recyclerview.widget.GridLayoutManager;
-import androidx.recyclerview.widget.ItemTouchHelper;
-import androidx.recyclerview.widget.LinearLayoutManager;
-import androidx.recyclerview.widget.RecyclerView;
-import androidx.swiperefreshlayout.widget.SwipeRefreshLayout;
 import butterknife.BindView;
 import butterknife.ButterKnife;
 import butterknife.Unbinder;
@@ -50,6 +52,7 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
     @BindView(R.id.rl_empty_view)
     RelativeLayout rlEmptyView;
 
+    private CallBackValue callBackValue;
     private Unbinder unbinder;
     private String bookPx;
     private boolean resumed = false;
@@ -78,7 +81,7 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
 
     @Override
     protected void initData() {
-        CallBackValue callBackValue = (CallBackValue) getActivity();
+        callBackValue = (CallBackValue) getActivity();
         bookPx = preferences.getString(getString(R.string.pk_bookshelf_px), "0");
         isRecreate = callBackValue != null && callBackValue.isRecreate();
     }
@@ -120,6 +123,7 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
         });
         ItemTouchCallback itemTouchCallback = new ItemTouchCallback();
         itemTouchCallback.setSwipeRefreshLayout(refreshLayout);
+        itemTouchCallback.setViewPager(callBackValue.getViewPager());
         if (bookPx.equals("2")) {
             itemTouchCallback.setDragEnable(true);
             ItemTouchHelper itemTouchHelper = new ItemTouchHelper(itemTouchCallback);
@@ -236,6 +240,8 @@ public class BookListFragment extends MBaseFragment<BookListContract.Presenter> 
         boolean isRecreate();
 
         int getGroup();
+
+        ViewPager getViewPager();
     }
 
 }

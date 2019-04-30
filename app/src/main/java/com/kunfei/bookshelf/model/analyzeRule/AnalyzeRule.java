@@ -3,6 +3,8 @@ package com.kunfei.bookshelf.model.analyzeRule;
 import android.annotation.SuppressLint;
 import android.text.TextUtils;
 
+import androidx.annotation.Keep;
+
 import com.google.gson.Gson;
 import com.kunfei.bookshelf.base.BaseModelImpl;
 import com.kunfei.bookshelf.bean.BaseBookBean;
@@ -10,12 +12,12 @@ import com.kunfei.bookshelf.utils.NetworkUtil;
 import com.kunfei.bookshelf.utils.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import javax.script.ScriptException;
 import javax.script.SimpleBindings;
 
 import retrofit2.Response;
@@ -30,6 +32,7 @@ import static com.kunfei.bookshelf.constant.AppConstant.SCRIPT_ENGINE;
  * Created by REFGD.
  * 统一解析接口
  */
+@Keep
 public class AnalyzeRule {
     private static final Pattern putPattern = Pattern.compile("@put:\\{.+?\\}", Pattern.CASE_INSENSITIVE);
     private static final Pattern getPattern = Pattern.compile("@get:\\{.+?\\}", Pattern.CASE_INSENSITIVE);
@@ -149,7 +152,7 @@ public class AnalyzeRule {
             switch (rule.mode) {
                 case Js:
                     if (result == null) result = object;
-                    result = evalJS(rule.rule, result, baseUrl);
+                    result = evalJS(rule.rule, result);
                     break;
                 case JSon:
                     result = getAnalyzeByJSonPath(result).getStringList(rule.rule);
@@ -163,9 +166,7 @@ public class AnalyzeRule {
         }
         if (result == null) return new ArrayList<>();
         if (result instanceof String) {
-            List<String> stringList = new ArrayList<>();
-            stringList.add((String) result);
-            result = stringList;
+            result = Arrays.asList(StringUtils.formatHtml((String) result).split("\n"));
         }
         if (isUrl && !TextUtils.isEmpty(baseUrl)) {
             List<String> urlList = new ArrayList<>();
@@ -198,7 +199,7 @@ public class AnalyzeRule {
                 switch (rule.mode) {
                     case Js:
                         if (result == null) result = object;
-                        result = evalJS(rule.rule, result, baseUrl);
+                        result = evalJS(rule.rule, result);
                         break;
                     case JSon:
                         result = getAnalyzeByJSonPath(result).getString(rule.rule);
@@ -216,9 +217,9 @@ public class AnalyzeRule {
             }
         }
         if (isUrl && !StringUtils.isTrimEmpty(baseUrl)) {
-            result = NetworkUtil.getAbsoluteURL(baseUrl, (String) result);
+            return NetworkUtil.getAbsoluteURL(baseUrl, (String) result);
         }
-        return (String) result;
+        return StringUtils.formatHtml((String) result);
     }
 
     /**
@@ -232,7 +233,7 @@ public class AnalyzeRule {
             switch (rule.mode) {
                 case Js:
                     if (result == null) result = object;
-                    result = evalJS(rule.rule, result, null);
+                    result = evalJS(rule.rule, result);
                     break;
                 case JSon:
                     result = getAnalyzeByJSonPath(result).getList(rule.rule);
@@ -262,7 +263,7 @@ public class AnalyzeRule {
      * 分解规则生成规则列表
      */
     @SuppressLint("DefaultLocale")
-    private List<SourceRule> splitSourceRule(String ruleStr) throws ScriptException {
+    private List<SourceRule> splitSourceRule(String ruleStr) throws Exception {
         List<SourceRule> ruleList = new ArrayList<>();
         if (ruleStr == null) return ruleList;
         //检测Mode
@@ -307,14 +308,9 @@ public class AnalyzeRule {
         if(ruleStr.contains("{{") && ruleStr.contains("}}")){
             Object jsEval;
             StringBuffer sb = new StringBuffer(ruleStr.length());
-            SimpleBindings simpleBindings = new SimpleBindings(){{
-                this.put("java", this);
-                this.put("result", String.valueOf(object));
-                this.put("baseUrl", baseUrl);
-            }};
             Matcher expMatcher = EXP_PATTERN.matcher(ruleStr);
             while (expMatcher.find()){
-                jsEval = SCRIPT_ENGINE.eval(expMatcher.group(1),simpleBindings);
+                jsEval = evalJS(expMatcher.group(1), object);
                 if(jsEval instanceof String){
                     expMatcher.appendReplacement(sb,(String) jsEval);
                 }
@@ -394,7 +390,7 @@ public class AnalyzeRule {
     /**
      * 执行JS
      */
-    private Object evalJS(String jsStr, Object result, String baseUrl) throws Exception {
+    private Object evalJS(String jsStr, Object result) throws Exception {
         SimpleBindings bindings = new SimpleBindings();
         bindings.put("java", this);
         bindings.put("result", result);
