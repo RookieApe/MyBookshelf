@@ -5,6 +5,7 @@ import android.text.TextUtils;
 
 import com.kunfei.bookshelf.DbHelper;
 import com.kunfei.bookshelf.bean.BaseChapterBean;
+import com.kunfei.bookshelf.bean.BookContentBean;
 import com.kunfei.bookshelf.bean.BookInfoBean;
 import com.kunfei.bookshelf.bean.BookShelfBean;
 import com.kunfei.bookshelf.bean.BookmarkBean;
@@ -26,8 +27,8 @@ import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.text.DecimalFormat;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -101,8 +102,36 @@ public class BookshelfHelp {
     }
 
     public static boolean isChapterCached(BookInfoBean book, BaseChapterBean chapter) {
+        if (book.isAudio()) {
+            BookContentBean contentBean = DbHelper.getDaoSession().getBookContentBeanDao().load(chapter.getDurChapterUrl());
+            if (contentBean == null) return false;
+            if (contentBean.outTime()) {
+                DbHelper.getDaoSession().getBookContentBeanDao().delete(contentBean);
+                return false;
+            }
+            return !TextUtils.isEmpty(contentBean.getDurChapterContent());
+        }
         final String path = getCachePathName(book);
         return chapterCaches.containsKey(path) && chapterCaches.get(path).contains(chapter.getDurChapterIndex());
+    }
+
+    public static String getChapterCache(BookShelfBean bookShelfBean, ChapterListBean chapter) {
+        if (bookShelfBean.isAudio()) {
+            BookContentBean contentBean = DbHelper.getDaoSession().getBookContentBeanDao().load(chapter.getDurChapterUrl());
+            if (contentBean == null) return null;
+            if (contentBean.outTime()) {
+                DbHelper.getDaoSession().getBookContentBeanDao().delete(contentBean);
+                return null;
+            }
+            return contentBean.getDurChapterContent();
+        }
+        @SuppressLint("DefaultLocale")
+        File file = getBookFile(BookshelfHelp.getCachePathName(bookShelfBean.getBookInfoBean()),
+                chapter.getDurChapterIndex(), chapter.getDurChapterName());
+        if (!file.exists()) return null;
+
+        byte[] contentByte = DocumentHelper.getBytes(file);
+        return new String(contentByte, StandardCharsets.UTF_8);
     }
 
     public static void clearCaches(boolean clearChapterList) {
@@ -340,7 +369,7 @@ public class BookshelfHelp {
         bookShelfBean.setDurChapter(0);
         bookShelfBean.setDurChapterPage(0);
         bookShelfBean.setVariable(searchBookBean.getVariable());
-        BookInfoBean bookInfo = new BookInfoBean();
+        BookInfoBean bookInfo = bookShelfBean.getBookInfoBean();
         bookInfo.setNoteUrl(searchBookBean.getNoteUrl());
         bookInfo.setAuthor(searchBookBean.getAuthor());
         bookInfo.setCoverUrl(searchBookBean.getCoverUrl());
@@ -349,21 +378,17 @@ public class BookshelfHelp {
         bookInfo.setOrigin(searchBookBean.getOrigin());
         bookInfo.setIntroduce(searchBookBean.getIntroduce());
         bookInfo.setChapterUrl(searchBookBean.getChapterUrl());
-        bookShelfBean.setBookInfoBean(bookInfo);
+        bookInfo.setBookInfoHtml(searchBookBean.getBookInfoHtml());
         bookShelfBean.setVariable(searchBookBean.getVariable());
         return bookShelfBean;
     }
 
     public static List<ChapterListBean> getChapterList(String noteUrl) {
-        List<ChapterListBean> chapterListBeans = DbHelper.getDaoSession().getChapterListBeanDao().queryBuilder()
+        return DbHelper.getDaoSession().getChapterListBeanDao().queryBuilder()
                 .where(ChapterListBeanDao.Properties.NoteUrl.eq(noteUrl))
                 .orderAsc(ChapterListBeanDao.Properties.DurChapterIndex)
                 .build()
                 .list();
-        if (chapterListBeans == null) {
-            chapterListBeans = new ArrayList<>();
-        }
-        return chapterListBeans;
     }
 
     public static void delChapterList(String noteUrl) {

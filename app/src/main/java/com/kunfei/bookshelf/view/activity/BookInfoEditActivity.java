@@ -31,6 +31,7 @@ import com.kunfei.bookshelf.utils.FileUtils;
 import com.kunfei.bookshelf.utils.PermissionUtils;
 import com.kunfei.bookshelf.utils.SoftInputUtil;
 import com.kunfei.bookshelf.utils.theme.ThemeStore;
+import com.kunfei.bookshelf.widget.modialog.ChangeSourceDialog;
 import com.kunfei.bookshelf.widget.modialog.MoDialogHUD;
 
 import java.io.File;
@@ -151,11 +152,12 @@ public class BookInfoEditActivity extends MBaseActivity {
         super.bindEvent();
         tvSelectCover.setOnClickListener(view -> selectCover());
         tvChangeCover.setOnClickListener(view ->
-                moDialogHUD.showChangeSource(book, searchBookBean -> {
-                    tieCoverUrl.setText(searchBookBean.getCoverUrl());
-                    book.setCustomCoverPath(tieCoverUrl.getText().toString());
-                    initCover();
-                }));
+                ChangeSourceDialog.builder(BookInfoEditActivity.this, book)
+                        .setCallback(searchBookBean -> {
+                            tieCoverUrl.setText(searchBookBean.getCoverUrl());
+                            book.setCustomCoverPath(tieCoverUrl.getText().toString());
+                            initCover();
+                        }).show());
         tvRefreshCover.setOnClickListener(view -> {
             book.setCustomCoverPath(tieCoverUrl.getText().toString());
             initCover();
@@ -163,7 +165,7 @@ public class BookInfoEditActivity extends MBaseActivity {
     }
 
     private void selectCover() {
-        PermissionUtils.checkMorePermissions(BookInfoEditActivity.this, MApplication.PerList, new PermissionUtils.PermissionCheckCallBack() {
+        PermissionUtils.checkMorePermissions(BookInfoEditActivity.this, MApplication.PerList, new PermissionUtils.PermissionCheckCallback() {
             @Override
             public void onHasPermission() {
                 Intent intent = new Intent(Intent.ACTION_GET_CONTENT);
@@ -179,6 +181,7 @@ public class BookInfoEditActivity extends MBaseActivity {
 
             @Override
             public void onAlreadyTurnedDownAndNoAsk(String... permission) {
+                BookInfoEditActivity.this.toast(R.string.bg_image_per);
                 PermissionUtils.requestMorePermissions(BookInfoEditActivity.this, permission, MApplication.RESULT__PERMS);
             }
         });
@@ -264,7 +267,7 @@ public class BookInfoEditActivity extends MBaseActivity {
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        PermissionUtils.checkMorePermissions(BookInfoEditActivity.this, MApplication.PerList, new PermissionUtils.PermissionCheckCallBack() {
+        PermissionUtils.checkMorePermissions(BookInfoEditActivity.this, MApplication.PerList, new PermissionUtils.PermissionCheckCallback() {
             @Override
             public void onHasPermission() {
                 selectCover();

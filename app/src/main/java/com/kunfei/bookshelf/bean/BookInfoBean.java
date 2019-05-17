@@ -4,12 +4,11 @@ package com.kunfei.bookshelf.bean;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.os.AsyncTask;
-import android.os.Parcel;
-import android.os.Parcelable;
 import android.text.TextUtils;
 
 import com.kunfei.bookshelf.DbHelper;
 import com.kunfei.bookshelf.R;
+import com.kunfei.bookshelf.constant.BookType;
 import com.kunfei.bookshelf.help.BookshelfHelp;
 import com.kunfei.bookshelf.help.FileHelp;
 import com.kunfei.bookshelf.utils.MD5Utils;
@@ -25,25 +24,30 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Objects;
 
 /**
  * 书本信息
  */
 @Entity
-public class BookInfoBean implements Parcelable, Cloneable {
+public class BookInfoBean implements Cloneable {
 
     private String name; //小说名
     private String tag;
     @Id
-    private String noteUrl;  //如果是来源网站   则小说根地址 /如果是本地  则是小说本地MD5
-    private String chapterUrl;  //章节目录地址
+    private String noteUrl;  //如果是来源网站,则小说根地址,如果是本地则是小说本地MD5
+    private String chapterUrl;  //章节目录地址,本地目录正则
     private long finalRefreshData;  //章节最后更新时间
     private String coverUrl; //小说封面
     private String author;//作者
     private String introduce; //简介
     private String origin; //来源
     private String charset;//编码
-
+    private String bookSourceType;
+    @Transient
+    private String bookInfoHtml;
+    @Transient
+    private String chapterListHtml;
     @Transient
     private List<ChapterListBean> chapterList = new ArrayList<>();    //章节列表
     @Transient
@@ -56,37 +60,9 @@ public class BookInfoBean implements Parcelable, Cloneable {
 
     }
 
-    @Transient
-    public static final Creator<BookInfoBean> CREATOR = new Creator<BookInfoBean>() {
-        @Override
-        public BookInfoBean createFromParcel(Parcel in) {
-            return new BookInfoBean(in);
-        }
-
-        @Override
-        public BookInfoBean[] newArray(int size) {
-            return new BookInfoBean[size];
-        }
-    };
-
-    protected BookInfoBean(Parcel in) {
-        name = in.readString();
-        tag = in.readString();
-        noteUrl = in.readString();
-        chapterUrl = in.readString();
-        finalRefreshData = in.readLong();
-        coverUrl = in.readString();
-        author = in.readString();
-        introduce = in.readString();
-        origin = in.readString();
-        charset = in.readString();
-        chapterList = in.createTypedArrayList(ChapterListBean.CREATOR);
-        bookmarkList = in.createTypedArrayList(BookmarkBean.CREATOR);
-    }
-
-    @Generated(hash = 1022173528)
-    public BookInfoBean(String name, String tag, String noteUrl, String chapterUrl, long finalRefreshData, String coverUrl,
-                        String author, String introduce, String origin, String charset) {
+    @Generated(hash = 906814482)
+    public BookInfoBean(String name, String tag, String noteUrl, String chapterUrl, long finalRefreshData, String coverUrl, String author, String introduce,
+                        String origin, String charset, String bookSourceType) {
         this.name = name;
         this.tag = tag;
         this.noteUrl = noteUrl;
@@ -97,27 +73,7 @@ public class BookInfoBean implements Parcelable, Cloneable {
         this.introduce = introduce;
         this.origin = origin;
         this.charset = charset;
-    }
-
-    @Override
-    public void writeToParcel(Parcel dest, int flags) {
-        dest.writeString(name);
-        dest.writeString(tag);
-        dest.writeString(noteUrl);
-        dest.writeString(chapterUrl);
-        dest.writeLong(finalRefreshData);
-        dest.writeString(coverUrl);
-        dest.writeString(author);
-        dest.writeString(introduce);
-        dest.writeString(origin);
-        dest.writeString(charset);
-        dest.writeTypedList(chapterList);
-        dest.writeTypedList(bookmarkList);
-    }
-
-    @Override
-    public int describeContents() {
-        return 0;
+        this.bookSourceType = bookSourceType;
     }
 
     @Override
@@ -263,7 +219,7 @@ public class BookInfoBean implements Parcelable, Cloneable {
     private void extractEpubCoverImage() {
         try {
             FileHelp.createFolderIfNotExists(coverPath);
-            Bitmap cover = BitmapFactory.decodeStream(PageLoaderEpub.readBook(new File(noteUrl)).getCoverImage().getInputStream());
+            Bitmap cover = BitmapFactory.decodeStream(Objects.requireNonNull(PageLoaderEpub.readBook(new File(noteUrl))).getCoverImage().getInputStream());
             String md5Path = coverPath + MD5Utils.strToMd5By16(noteUrl) + ".jpg";
             FileOutputStream out = new FileOutputStream(new File(md5Path));
             cover.compress(Bitmap.CompressFormat.JPEG, 90, out);
@@ -279,4 +235,39 @@ public class BookInfoBean implements Parcelable, Cloneable {
         return tag.equals(BookShelfBean.LOCAL_TAG) && noteUrl.toLowerCase().matches(".*\\.epub$");
     }
 
+    public String getBookSourceType() {
+        return this.bookSourceType;
+    }
+
+    public void setBookSourceType(String bookSourceType) {
+        this.bookSourceType = bookSourceType;
+    }
+
+    public boolean isAudio() {
+        return Objects.equals(BookType.AUDIO, bookSourceType);
+    }
+
+    public String getBookInfoHtml() {
+        return bookInfoHtml;
+    }
+
+    public void setBookInfoHtml(String bookInfoHtml) {
+        this.bookInfoHtml = bookInfoHtml;
+    }
+
+    public static String getCoverPath() {
+        return coverPath;
+    }
+
+    public static void setCoverPath(String coverPath) {
+        BookInfoBean.coverPath = coverPath;
+    }
+
+    public String getChapterListHtml() {
+        return chapterListHtml;
+    }
+
+    public void setChapterListHtml(String chapterListHtml) {
+        this.chapterListHtml = chapterListHtml;
+    }
 }

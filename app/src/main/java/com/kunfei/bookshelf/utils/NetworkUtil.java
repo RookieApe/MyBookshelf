@@ -5,6 +5,7 @@ import android.annotation.SuppressLint;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.text.TextUtils;
 
 import com.kunfei.bookshelf.MApplication;
 import com.kunfei.bookshelf.R;
@@ -19,6 +20,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 public class NetworkUtil {
+    public static final Pattern headerPattern = Pattern.compile("@Header:\\{.+?\\}", Pattern.CASE_INSENSITIVE);
     public static final int SUCCESS = 10000;
     public static final int ERROR_CODE_NONET = 10001;
     public static final int ERROR_CODE_OUTTIME = 10002;
@@ -51,6 +53,7 @@ public class NetworkUtil {
      * 获取绝对地址
      */
     public static String getAbsoluteURL(String baseURL, String relativePath) {
+        if (TextUtils.isEmpty(baseURL)) return relativePath;
         String header = null;
         if (StringUtils.startWithIgnoreCase(relativePath, "@header:")) {
             header = relativePath.substring(0, relativePath.indexOf("}") + 1);

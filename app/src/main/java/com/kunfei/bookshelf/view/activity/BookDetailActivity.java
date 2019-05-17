@@ -37,6 +37,7 @@ import com.kunfei.bookshelf.presenter.BookDetailPresenter;
 import com.kunfei.bookshelf.presenter.ReadBookPresenter;
 import com.kunfei.bookshelf.presenter.contract.BookDetailContract;
 import com.kunfei.bookshelf.widget.CoverImageView;
+import com.kunfei.bookshelf.widget.modialog.ChangeSourceDialog;
 import com.kunfei.bookshelf.widget.modialog.MoDialogHUD;
 
 import java.io.File;
@@ -187,6 +188,11 @@ public class BookDetailActivity extends MBaseActivity<BookDetailContract.Present
             } else {
                 upImageView(bookInfoBean.getCoverUrl());
             }
+            if (bookShelfBean.getTag().equals(BookShelfBean.LOCAL_TAG)) {
+                tvChangeOrigin.setVisibility(View.INVISIBLE);
+            } else {
+                tvChangeOrigin.setVisibility(View.VISIBLE);
+            }
             upChapterSizeTv();
         }
         tvLoading.setVisibility(View.GONE);
@@ -237,6 +243,8 @@ public class BookDetailActivity extends MBaseActivity<BookDetailContract.Present
         tvLoading.setVisibility(View.VISIBLE);
         tvLoading.setText(R.string.loading);
         tvLoading.setOnClickListener(null);
+        mPresenter.getBookShelf().getBookInfoBean().setBookInfoHtml(null);
+        mPresenter.getBookShelf().getBookInfoBean().setChapterListHtml(null);
         mPresenter.getBookShelfInfo();
     }
 
@@ -244,33 +252,22 @@ public class BookDetailActivity extends MBaseActivity<BookDetailContract.Present
     @Override
     protected void bindEvent() {
         ivBlurCover.setOnClickListener(null);
-        vwContent.setOnClickListener(v -> {
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                if (getStart_share_ele()) {
-                    finishAfterTransition();
-                } else {
-                    finish();
-                    overridePendingTransition(0, android.R.anim.fade_out);
-                }
-            } else {
-                finish();
-                overridePendingTransition(0, android.R.anim.fade_out);
-            }
-        });
+        vwContent.setOnClickListener(v -> finish());
 
-        tvChangeOrigin.setOnClickListener(view -> moDialogHUD.showChangeSource(mPresenter.getBookShelf(),
-                searchBookBean -> {
-                    tvOrigin.setText(searchBookBean.getOrigin());
-                    tvLoading.setVisibility(View.VISIBLE);
-                    tvLoading.setText(R.string.loading);
-                    tvLoading.setOnClickListener(null);
-                    if (mPresenter.getOpenFrom() == FROM_BOOKSHELF) {
-                        mPresenter.changeBookSource(searchBookBean);
-                    } else {
-                        mPresenter.initBookFormSearch(searchBookBean);
-                        mPresenter.getBookShelfInfo();
-                    }
-                }));
+        tvChangeOrigin.setOnClickListener(view ->
+                ChangeSourceDialog.builder(BookDetailActivity.this, mPresenter.getBookShelf())
+                        .setCallback(searchBookBean -> {
+                            tvOrigin.setText(searchBookBean.getOrigin());
+                            tvLoading.setVisibility(View.VISIBLE);
+                            tvLoading.setText(R.string.loading);
+                            tvLoading.setOnClickListener(null);
+                            if (mPresenter.getOpenFrom() == FROM_BOOKSHELF) {
+                                mPresenter.changeBookSource(searchBookBean);
+                            } else {
+                                mPresenter.initBookFormSearch(searchBookBean);
+                                mPresenter.getBookShelfInfo();
+                            }
+                        }).show());
 
         tvRead.setOnClickListener(v -> {
             Intent intent = new Intent(BookDetailActivity.this, ReadBookActivity.class);
@@ -384,6 +381,12 @@ public class BookDetailActivity extends MBaseActivity<BookDetailContract.Present
         Boolean mo = moDialogHUD.onKeyDown(keyCode, event);
         if (mo) return true;
         return super.onKeyDown(keyCode, event);
+    }
+
+    @Override
+    public void finish() {
+        super.finish();
+        overridePendingTransition(0, android.R.anim.fade_out);
     }
 
     @Override

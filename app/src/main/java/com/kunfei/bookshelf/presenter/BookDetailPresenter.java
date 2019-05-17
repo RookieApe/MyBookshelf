@@ -20,14 +20,13 @@ import com.kunfei.bookshelf.constant.RxBusTag;
 import com.kunfei.bookshelf.help.BookshelfHelp;
 import com.kunfei.bookshelf.help.ChangeSourceHelp;
 import com.kunfei.bookshelf.model.BookSourceManager;
+import com.kunfei.bookshelf.model.SavedSource;
 import com.kunfei.bookshelf.model.WebBookModel;
 import com.kunfei.bookshelf.presenter.contract.BookDetailContract;
 import com.kunfei.bookshelf.utils.RxUtils;
-import com.kunfei.bookshelf.widget.modialog.ChangeSourceView;
 
 import io.reactivex.Observable;
 import io.reactivex.ObservableOnSubscribe;
-import io.reactivex.Observer;
 import io.reactivex.disposables.CompositeDisposable;
 import io.reactivex.disposables.Disposable;
 
@@ -44,8 +43,8 @@ public class BookDetailPresenter extends BasePresenterImpl<BookDetailContract.Vi
     @Override
     public void initData(Intent intent) {
         openFrom = intent.getIntExtra("openFrom", FROM_BOOKSHELF);
+        String key = intent.getStringExtra("data_key");
         if (openFrom == FROM_BOOKSHELF) {
-            String key = intent.getStringExtra("data_key");
             bookShelf = (BookShelfBean) BitIntentDataManager.getInstance().getData(key);
             if (bookShelf == null) {
                 String noteUrl = intent.getStringExtra("noteUrl");
@@ -61,7 +60,7 @@ public class BookDetailPresenter extends BasePresenterImpl<BookDetailContract.Vi
             searchBook.setNoteUrl(bookShelf.getNoteUrl());
             searchBook.setTag(bookShelf.getTag());
         } else {
-            initBookFormSearch(intent.getParcelableExtra("data"));
+            initBookFormSearch((SearchBookBean) BitIntentDataManager.getInstance().getData(key));
         }
     }
 
@@ -76,37 +75,32 @@ public class BookDetailPresenter extends BasePresenterImpl<BookDetailContract.Vi
         bookShelf = BookshelfHelp.getBookFromSearchBook(searchBookBean);
     }
 
+    @Override
     public Boolean getInBookShelf() {
         return inBookShelf;
     }
 
+    @Override
     public int getOpenFrom() {
         return openFrom;
     }
 
+    @Override
     public SearchBookBean getSearchBook() {
         return searchBook;
     }
 
+    @Override
     public BookShelfBean getBookShelf() {
         return bookShelf;
     }
 
     @Override
     public void getBookShelfInfo() {
-        Observable.create((ObservableOnSubscribe<BookShelfBean>) e -> {
-            BookShelfBean bookShelfBean = BookshelfHelp.getBook(bookShelf.getNoteUrl());
-            if (bookShelfBean != null) {
-                inBookShelf = true;
-                bookShelf = bookShelfBean;
-            }
-            e.onNext(bookShelf);
-            e.onComplete();
-        })
-                .flatMap(bookShelfBean -> WebBookModel.getInstance().getBookInfo(bookShelfBean))
+        WebBookModel.getInstance().getBookInfo(bookShelf)
                 .flatMap(bookShelfBean -> WebBookModel.getInstance().getChapterList(bookShelfBean))
                 .compose(RxUtils::toSimpleSingle)
-                .subscribe(new Observer<BookShelfBean>() {
+                .subscribe(new MyObserver<BookShelfBean>() {
                     @Override
                     public void onSubscribe(Disposable d) {
                         compositeDisposable.add(d);
@@ -130,11 +124,6 @@ public class BookDetailPresenter extends BasePresenterImpl<BookDetailContract.Vi
                         mView.toast(e.getLocalizedMessage());
                         mView.getBookShelfError();
                     }
-
-                    @Override
-                    public void onComplete() {
-
-                    }
                 });
     }
 
@@ -148,7 +137,7 @@ public class BookDetailPresenter extends BasePresenterImpl<BookDetailContract.Vi
                 e.onNext(true);
                 e.onComplete();
             }).compose(RxUtils::toSimpleSingle)
-                    .subscribe(new Observer<Boolean>() {
+                    .subscribe(new MyObserver<Boolean>() {
                         @Override
                         public void onSubscribe(Disposable d) {
                             compositeDisposable.add(d);
@@ -169,11 +158,6 @@ public class BookDetailPresenter extends BasePresenterImpl<BookDetailContract.Vi
                             e.printStackTrace();
                             mView.toast("放入书架失败!");
                         }
-
-                        @Override
-                        public void onComplete() {
-
-                        }
                     });
         }
     }
@@ -188,7 +172,7 @@ public class BookDetailPresenter extends BasePresenterImpl<BookDetailContract.Vi
                 e.onNext(true);
                 e.onComplete();
             }).compose(RxUtils::toSimpleSingle)
-                    .subscribe(new Observer<Boolean>() {
+                    .subscribe(new MyObserver<Boolean>() {
                         @Override
                         public void onSubscribe(Disposable d) {
                             compositeDisposable.add(d);
@@ -208,11 +192,6 @@ public class BookDetailPresenter extends BasePresenterImpl<BookDetailContract.Vi
                         public void onError(Throwable e) {
                             e.printStackTrace();
                             mView.toast("删除书籍失败！");
-                        }
-
-                        @Override
-                        public void onComplete() {
-
                         }
                     });
         }
@@ -236,12 +215,12 @@ public class BookDetailPresenter extends BasePresenterImpl<BookDetailContract.Vi
                             long currentTime = System.currentTimeMillis();
                             String bookName = bookShelf.getBookInfoBean().getName();
                             BookSourceBean bookSourceBean = BookSourceManager.getBookSourceByUrl(tag);
-                            if (ChangeSourceView.savedSource.getBookSource() != null && currentTime - ChangeSourceView.savedSource.getSaveTime() < 60000 && ChangeSourceView.savedSource.getBookName().equals(bookName))
-                                ChangeSourceView.savedSource.getBookSource().increaseWeight(-450);
-                            BookSourceManager.saveBookSource(ChangeSourceView.savedSource.getBookSource());
-                            ChangeSourceView.savedSource.setBookName(bookName);
-                            ChangeSourceView.savedSource.setSaveTime(currentTime);
-                            ChangeSourceView.savedSource.setBookSource(bookSourceBean);
+                            if (SavedSource.Instance.getBookSource() != null && currentTime - SavedSource.Instance.getSaveTime() < 60000 && SavedSource.Instance.getBookName().equals(bookName))
+                                SavedSource.Instance.getBookSource().increaseWeight(-450);
+                            BookSourceManager.saveBookSource(SavedSource.Instance.getBookSource());
+                            SavedSource.Instance.setBookName(bookName);
+                            SavedSource.Instance.setSaveTime(currentTime);
+                            SavedSource.Instance.setBookSource(bookSourceBean);
                             assert bookSourceBean != null;
                             bookSourceBean.increaseWeightBySelection();
                             BookSourceManager.saveBookSource(bookSourceBean);

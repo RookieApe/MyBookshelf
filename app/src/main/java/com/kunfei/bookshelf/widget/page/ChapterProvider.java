@@ -3,14 +3,14 @@ package com.kunfei.bookshelf.widget.page;
 import android.text.Layout;
 import android.text.StaticLayout;
 
+import androidx.annotation.NonNull;
+
 import com.kunfei.bookshelf.bean.ChapterListBean;
 import com.kunfei.bookshelf.help.ChapterContentHelp;
 import com.kunfei.bookshelf.utils.NetworkUtil;
 
 import java.util.ArrayList;
 import java.util.List;
-
-import androidx.annotation.NonNull;
 
 class ChapterProvider {
     private PageLoader pageLoader;
@@ -55,8 +55,21 @@ class ChapterProvider {
     private TxtChapter loadPageList(ChapterListBean chapter, @NonNull String content) {
         //生成的页面
         TxtChapter txtChapter = new TxtChapter(chapter.getDurChapterIndex());
+        if (pageLoader.bookShelfBean.isAudio()) {
+            txtChapter.setStatus(TxtChapter.Status.FINISH);
+            txtChapter.setMsg(content);
+            TxtPage page = new TxtPage(txtChapter.getTxtPageList().size());
+            page.setTitle(chapter.getDurChapterName());
+            page.addLine(chapter.getDurChapterName());
+            page.addLine(content);
+            page.setTitleLines(1);
+            txtChapter.addPage(page);
+            addTxtPageLength(txtChapter, page.getContent().length());
+            txtChapter.addPage(page);
+            return txtChapter;
+        }
         content = contentHelper.replaceContent(pageLoader.bookShelfBean.getBookInfoBean().getName(), pageLoader.bookShelfBean.getTag(), content);
-        String allLine[] = content.split("\n");
+        String[] allLine = content.split("\n");
         List<String> lines = new ArrayList<>();
         int rHeight = pageLoader.mVisibleHeight - pageLoader.contentMarginHeight * 2;
         int titleLinesCount = 0;
@@ -88,11 +101,10 @@ class ChapterProvider {
                 // 一页已经填充满了，创建 TextPage
                 if (rHeight <= 0) {
                     // 创建Page
-                    TxtPage page = new TxtPage();
-                    page.position = txtChapter.getTxtPageList().size();
-                    page.title = chapter.getDurChapterName();
-                    page.lines = new ArrayList<>(lines);
-                    page.titleLines = titleLinesCount;
+                    TxtPage page = new TxtPage(txtChapter.getTxtPageList().size());
+                    page.setTitle(chapter.getDurChapterName());
+                    page.addLines(lines);
+                    page.setTitleLines(titleLinesCount);
                     txtChapter.addPage(page);
                     addTxtPageLength(txtChapter, page.getContent().length());
                     // 重置Lines
@@ -110,7 +122,6 @@ class ChapterProvider {
                 } else {
                     Layout tempLayout = new StaticLayout(paragraph, pageLoader.mTextPaint, pageLoader.mVisibleWidth, Layout.Alignment.ALIGN_NORMAL, 0, 0, false);
                     wordCount = tempLayout.getLineEnd(0);
-
                 }
 
                 subStr = paragraph.substring(0, wordCount);
@@ -142,11 +153,10 @@ class ChapterProvider {
 
         if (lines.size() != 0) {
             //创建Page
-            TxtPage page = new TxtPage();
-            page.position = txtChapter.getTxtPageList().size();
-            page.title = chapter.getDurChapterName();
-            page.lines = new ArrayList<>(lines);
-            page.titleLines = titleLinesCount;
+            TxtPage page = new TxtPage(txtChapter.getTxtPageList().size());
+            page.setTitle(chapter.getDurChapterName());
+            page.addLines(lines);
+            page.setTitleLines(titleLinesCount);
             txtChapter.addPage(page);
             addTxtPageLength(txtChapter, page.getContent().length());
             //重置Lines

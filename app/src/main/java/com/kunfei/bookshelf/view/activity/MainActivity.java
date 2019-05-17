@@ -36,19 +36,21 @@ import com.google.android.material.appbar.AppBarLayout;
 import com.google.android.material.navigation.NavigationView;
 import com.google.android.material.tabs.TabLayout;
 import com.hwangjr.rxbus.RxBus;
+import com.kunfei.bookshelf.BuildConfig;
+import com.kunfei.bookshelf.DbHelper;
 import com.kunfei.bookshelf.MApplication;
 import com.kunfei.bookshelf.R;
 import com.kunfei.bookshelf.base.BaseTabActivity;
 import com.kunfei.bookshelf.constant.RxBusTag;
 import com.kunfei.bookshelf.help.BookshelfHelp;
-import com.kunfei.bookshelf.help.ChapterContentHelp;
 import com.kunfei.bookshelf.help.FileHelp;
 import com.kunfei.bookshelf.help.LauncherIcon;
-import com.kunfei.bookshelf.help.ReadBookControl;
+import com.kunfei.bookshelf.help.ProcessTextHelp;
 import com.kunfei.bookshelf.model.UpLastChapterModel;
 import com.kunfei.bookshelf.presenter.MainPresenter;
 import com.kunfei.bookshelf.presenter.contract.MainContract;
 import com.kunfei.bookshelf.service.WebService;
+import com.kunfei.bookshelf.utils.ACache;
 import com.kunfei.bookshelf.utils.PermissionUtils;
 import com.kunfei.bookshelf.utils.StringUtils;
 import com.kunfei.bookshelf.utils.theme.ATH;
@@ -56,6 +58,7 @@ import com.kunfei.bookshelf.utils.theme.NavigationViewUtil;
 import com.kunfei.bookshelf.utils.theme.ThemeStore;
 import com.kunfei.bookshelf.view.fragment.BookListFragment;
 import com.kunfei.bookshelf.view.fragment.FindBookFragment;
+import com.kunfei.bookshelf.widget.modialog.InputDialog;
 import com.kunfei.bookshelf.widget.modialog.MoDialogHUD;
 
 import java.util.Arrays;
@@ -67,7 +70,7 @@ import butterknife.ButterKnife;
 
 import static com.kunfei.bookshelf.utils.NetworkUtil.isNetWorkAvailable;
 
-public class MainActivity extends BaseTabActivity<MainContract.Presenter> implements MainContract.View, BookListFragment.CallBackValue {
+public class MainActivity extends BaseTabActivity<MainContract.Presenter> implements MainContract.View, BookListFragment.CallbackValue {
     private static final int BACKUP_RESULT = 11;
     private static final int RESTORE_RESULT = 12;
     private static final int FILE_SELECT_RESULT = 13;
@@ -128,14 +131,13 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
         String shared_url = preferences.getString("shared_url", "");
         assert shared_url != null;
         if (shared_url.length() > 1) {
-            moDialogHUD.showInputBox(getString(R.string.add_book_url),
-                    shared_url,
-                    null,
-                    inputText -> {
+            InputDialog.builder(this)
+                    .setTitle(getString(R.string.add_book_url))
+                    .setDefaultValue(shared_url)
+                    .setCallback(inputText -> {
                         inputText = StringUtils.trim(inputText);
                         mPresenter.addBookUrl(inputText);
-                    });
-
+                    }).show();
             preferences.edit()
                     .putString("shared_url", "")
                     .apply();
@@ -275,28 +277,37 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
     private void showFindMenu(View view) {
         PopupMenu popupMenu = new PopupMenu(this, view);
         popupMenu.getMenu().add(0, 0, 0, getString(R.string.switch_display_style));
+        popupMenu.getMenu().add(0, 0, 1, getString(R.string.clear_find_cache));
         boolean findTypeIsFlexBox = preferences.getBoolean("findTypeIsFlexBox", true);
         boolean showFindLeftView = preferences.getBoolean("showFindLeftView", true);
         if (findTypeIsFlexBox) {
-            popupMenu.getMenu().add(0, 0, 1, showFindLeftView ? "隐藏左侧栏" : "显示左侧栏");
+            popupMenu.getMenu().add(0, 0, 2, showFindLeftView ? "隐藏左侧栏" : "显示左侧栏");
         }
         popupMenu.setOnMenuItemClickListener(menuItem -> {
-            if (menuItem.getOrder() == 0) {
-                preferences.edit()
-                        .putBoolean("findTypeIsFlexBox", !findTypeIsFlexBox)
-                        .apply();
-                FindBookFragment findBookFragment = getFindFragment();
-                if (findBookFragment != null) {
-                    findBookFragment.upStyle();
-                }
-            } else if (menuItem.getOrder() == 1) {
-                preferences.edit()
-                        .putBoolean("showFindLeftView", !showFindLeftView)
-                        .apply();
-                FindBookFragment findBookFragment = getFindFragment();
-                if (findBookFragment != null) {
-                    findBookFragment.upUI();
-                }
+            FindBookFragment findBookFragment = getFindFragment();
+            switch (menuItem.getOrder()) {
+                case 0:
+                    preferences.edit()
+                            .putBoolean("findTypeIsFlexBox", !findTypeIsFlexBox)
+                            .apply();
+                    if (findBookFragment != null) {
+                        findBookFragment.upStyle();
+                    }
+                    break;
+                case 1:
+                    ACache.get(this, "findCache").clear();
+                    if (findBookFragment != null) {
+                        findBookFragment.refreshData();
+                    }
+                    break;
+                case 2:
+                    preferences.edit()
+                            .putBoolean("showFindLeftView", !showFindLeftView)
+                            .apply();
+                    if (findBookFragment != null) {
+                        findBookFragment.upUI();
+                    }
+                    break;
             }
             return true;
         });
@@ -394,7 +405,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
         int id = item.getItemId();
         switch (id) {
             case R.id.action_add_local:
-                PermissionUtils.checkMorePermissions(this, MApplication.PerList, new PermissionUtils.PermissionCheckCallBack() {
+                PermissionUtils.checkMorePermissions(this, MApplication.PerList, new PermissionUtils.PermissionCheckCallback() {
                     @Override
                     public void onHasPermission() {
                         startActivity(new Intent(MainActivity.this, ImportBookActivity.class));
@@ -407,18 +418,18 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
 
                     @Override
                     public void onAlreadyTurnedDownAndNoAsk(String... permission) {
+                        MainActivity.this.toast(R.string.please_grant_storage_permission);
                         PermissionUtils.requestMorePermissions(MainActivity.this, permission, FILE_SELECT_RESULT);
                     }
                 });
                 break;
             case R.id.action_add_url:
-                moDialogHUD.showInputBox(getString(R.string.add_book_url),
-                        null,
-                        null,
-                        inputText -> {
+                InputDialog.builder(this)
+                        .setTitle(getString(R.string.add_book_url))
+                        .setCallback(inputText -> {
                             inputText = StringUtils.trim(inputText);
                             mPresenter.addBookUrl(inputText);
-                        });
+                        }).show();
                 break;
             case R.id.action_download_all:
                 if (!isNetWorkAvailable())
@@ -524,7 +535,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
                     handler.postDelayed(() -> BookSourceActivity.startThis(this, requestSource), 200);
                     break;
                 case R.id.action_replace_rule:
-                    handler.postDelayed(() -> ReplaceRuleActivity.startThis(this), 200);
+                    handler.postDelayed(() -> ReplaceRuleActivity.startThis(this, null), 200);
                     break;
                 case R.id.action_download:
                     handler.postDelayed(() -> DownloadActivity.startThis(this), 200);
@@ -570,7 +581,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
      * 备份
      */
     private void backup() {
-        PermissionUtils.checkMorePermissions(this, MApplication.PerList, new PermissionUtils.PermissionCheckCallBack() {
+        PermissionUtils.checkMorePermissions(this, MApplication.PerList, new PermissionUtils.PermissionCheckCallback() {
             @Override
             public void onHasPermission() {
                 AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this)
@@ -590,6 +601,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
 
             @Override
             public void onAlreadyTurnedDownAndNoAsk(String... permission) {
+                MainActivity.this.toast(R.string.backup_permission);
                 PermissionUtils.requestMorePermissions(MainActivity.this, permission, BACKUP_RESULT);
             }
         });
@@ -599,7 +611,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
      * 恢复
      */
     private void restore() {
-        PermissionUtils.checkMorePermissions(this, MApplication.PerList, new PermissionUtils.PermissionCheckCallBack() {
+        PermissionUtils.checkMorePermissions(this, MApplication.PerList, new PermissionUtils.PermissionCheckCallback() {
             @Override
             public void onHasPermission() {
                 AlertDialog alertDialog = new AlertDialog.Builder(MainActivity.this)
@@ -658,7 +670,12 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
         if (!Objects.equals(MApplication.downloadPath, FileHelp.getFilesPath())) {
             requestPermission();
         }
-        handler.postDelayed(() -> UpLastChapterModel.getInstance().startUpdate(), 60 * 1000);
+        handler.postDelayed(() -> {
+            UpLastChapterModel.getInstance().startUpdate();
+            if (BuildConfig.DEBUG) {
+                ProcessTextHelp.setProcessTextEnable(false);
+            }
+        }, 60 * 1000);
     }
 
     @Override
@@ -673,7 +690,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        PermissionUtils.checkMorePermissions(this, MApplication.PerList, new PermissionUtils.PermissionCheckCallBack() {
+        PermissionUtils.checkMorePermissions(this, MApplication.PerList, new PermissionUtils.PermissionCheckCallback() {
             @Override
             public void onHasPermission() {
                 switch (requestCode) {
@@ -759,6 +776,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
     @Override
     protected void onDestroy() {
         UpLastChapterModel.destroy();
+        DbHelper.getDaoSession().getBookContentBeanDao().deleteAll();
         super.onDestroy();
     }
 
@@ -777,8 +795,7 @@ public class MainActivity extends BaseTabActivity<MainContract.Presenter> implem
 
     private void preloadReader() {
         AsyncTask.execute(() -> {
-            ReadBookControl.getInstance();
-            ChapterContentHelp.getInstance();
+
         });
     }
 

@@ -3,7 +3,8 @@ package com.kunfei.bookshelf.presenter;
 
 import android.os.AsyncTask;
 import android.text.TextUtils;
-import android.util.Log;
+
+import androidx.annotation.NonNull;
 
 import com.hwangjr.rxbus.RxBus;
 import com.hwangjr.rxbus.annotation.Subscribe;
@@ -27,7 +28,6 @@ import com.kunfei.bookshelf.utils.RxUtils;
 import java.util.ArrayList;
 import java.util.List;
 
-import androidx.annotation.NonNull;
 import io.reactivex.Observable;
 import io.reactivex.ObservableOnSubscribe;
 import io.reactivex.Observer;
@@ -94,7 +94,7 @@ public class BookListPresenter extends BasePresenterImpl<BookListContract.View> 
                     int chapterNum = bookShelfBean.getChapterListSize();
                     bookShelfBean.getBookInfoBean().setChapterList(BookshelfHelp.getChapterList(bookShelfBean.getNoteUrl()));
                     for (int start = bookShelfBean.getDurChapter(); start < chapterNum; start++) {
-                        if (!BookshelfHelp.isChapterCached(bookShelfBean.getBookInfoBean(), bookShelfBean.getChapter(start))
+                        if (!bookShelfBean.getChapter(start).getHasCache(bookShelfBean.getBookInfoBean())
                                 && start < chapterNum - 1) {
                             DownloadBookBean downloadBook = new DownloadBookBean();
                             downloadBook.setName(bookShelfBean.getBookInfoBean().getName());
@@ -157,11 +157,8 @@ public class BookListPresenter extends BasePresenterImpl<BookListContract.View> 
 
                             @Override
                             public void onError(Throwable e) {
-                                if (e instanceof WebBook.NoSourceThrowable) {
-
-                                } else {
+                                if (!(e instanceof WebBook.NoSourceThrowable)) {
                                     errBooks.add(bookShelfBean.getBookInfoBean().getName());
-                                    Log.w("MonkBook", String.format("%s: %s", bookShelfBean.getBookInfoBean().getName(), e.getMessage()));
                                     bookShelfBean.setLoading(false);
                                     mView.refreshBook(bookShelfBean.getNoteUrl());
                                     refreshBookshelf();

@@ -41,6 +41,7 @@ class BookInfo {
             String result;
             bookInfoBean.setNoteUrl(bookShelfBean.getNoteUrl());   //id
             bookInfoBean.setTag(tag);
+            bookInfoBean.setBookSourceType(bookSourceBean.getBookSourceType());
 
             AnalyzeRule analyzer = new AnalyzeRule(bookShelfBean);
             analyzer.setContent(s, bookShelfBean.getNoteUrl());
@@ -77,14 +78,16 @@ class BookInfo {
             Debug.printLog(tag, "└" + bookInfoBean.getCoverUrl());
             Debug.printLog(tag, "┌获取目录网址");
             result = analyzer.getString(bookSourceBean.getRuleChapterUrl(), true);
-            if (!isEmpty(result)) {
-                bookInfoBean.setChapterUrl(result);
-            }else{
-                bookInfoBean.setChapterUrl(bookShelfBean.getNoteUrl());
+            if (isEmpty(result)) result = bookShelfBean.getNoteUrl();
+            bookInfoBean.setChapterUrl(result);
+            //如果目录页和详情页相同,暂存页面内容供获取目录用
+            if (result.equals(bookShelfBean.getNoteUrl())) {
+                bookInfoBean.setChapterListHtml(s);
             }
             Debug.printLog(tag, "└" + bookInfoBean.getChapterUrl());
             bookInfoBean.setOrigin(name);
             bookShelfBean.setBookInfoBean(bookInfoBean);
+            Debug.printLog(tag, "-详情页解析完成");
             e.onNext(bookShelfBean);
             e.onComplete();
         });
