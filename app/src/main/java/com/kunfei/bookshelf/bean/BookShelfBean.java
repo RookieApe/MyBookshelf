@@ -48,6 +48,7 @@ public class BookShelfBean implements Cloneable, BaseBookBean {
     private Boolean allowUpdate = true;
     private Boolean useReplaceRule = true;
     private String variable;
+    private Boolean replaceEnable = false;
 
     @Transient
     private Map<String, String> variableMap;
@@ -59,11 +60,11 @@ public class BookShelfBean implements Cloneable, BaseBookBean {
 
     }
 
-    @Generated(hash = 63205856)
+    @Generated(hash = 451550884)
     public BookShelfBean(String noteUrl, Integer durChapter, Integer durChapterPage, Long finalDate, Boolean hasUpdate,
                          Integer newChapters, String tag, Integer serialNumber, Long finalRefreshData, Integer group,
                          String durChapterName, String lastChapterName, Integer chapterListSize, String customCoverPath,
-                         Boolean allowUpdate, Boolean useReplaceRule, String variable) {
+                         Boolean allowUpdate, Boolean useReplaceRule, String variable, Boolean replaceEnable) {
         this.noteUrl = noteUrl;
         this.durChapter = durChapter;
         this.durChapterPage = durChapterPage;
@@ -81,6 +82,7 @@ public class BookShelfBean implements Cloneable, BaseBookBean {
         this.allowUpdate = allowUpdate;
         this.useReplaceRule = useReplaceRule;
         this.variable = variable;
+        this.replaceEnable = replaceEnable;
     }
 
     @Override
@@ -133,6 +135,15 @@ public class BookShelfBean implements Cloneable, BaseBookBean {
 
     public int getDurChapter() {
         return durChapter < 0 ? 0 : durChapter;
+    }
+
+    public int getDurChapter(int chapterListSize) {
+        if (durChapter < 0 | chapterListSize == 0) {
+            return 0;
+        } else if (durChapter >= chapterListSize) {
+            return chapterListSize - 1;
+        }
+        return durChapter;
     }
 
     public int getDurChapterPage() {
@@ -288,5 +299,13 @@ public class BookShelfBean implements Cloneable, BaseBookBean {
 
     public boolean isAudio() {
         return Objects.equals(bookInfoBean.getBookSourceType(), BookType.AUDIO);
+    }
+
+    public Boolean getReplaceEnable() {
+        return replaceEnable == null ? false : replaceEnable;
+    }
+
+    public void setReplaceEnable(Boolean replaceEnable) {
+        this.replaceEnable = replaceEnable;
     }
 }
