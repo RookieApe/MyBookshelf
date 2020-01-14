@@ -2,6 +2,9 @@
 ### 关注公众号[开源阅读软件]点击广告可支持作者!
 ### 捐赠里点击红包搜索码可开启高级功能!
 
+**2020/01/14**
+* 最低版本降低到 4.1
+
 **2020/01/09**
 * 修复按键码为0时翻页的bug
 * 去除tts中文检测判断
@@ -21,6 +24,9 @@
 **2019/10/30**
 * 修复从搜索界面打开书籍,是否在上架不对的bug
 * 封面换源不显示已经删除的书源
+
+**2019/10/24**
+* 解决混淆导致应用启动崩溃的问题
 
 **2019/10/23**
 * 繁体-翻译者:Cello琴弦之間
@@ -532,9 +538,9 @@
 * 给目录添加了去重处理,保留后面,比如有些源,最前面有最新章节会和后面重复,导致bug
 
 **2018/12/08**
-* 支持XPath语法,以@XPath:开头,语法见 http://www.w3school.com.cn/xpath/index.asp
-* 支持JSonPath语法,以@JSon:开头,语法见 https://blog.csdn.net/koflance/article/details/63262484
-* 支持用js处理结果,以@js:开头,结果变量为result 如 "@JSon:$.link@js:"http://chapterup.zhuishushenqi.com/chapter/" + encodeURIComponent(result)"
+* 支持XPath语法,以@XPath:开头,语法见 <http://www.w3school.com.cn/xpath/index.asp>
+* 支持JSonPath语法,以@JSon:开头,语法见 <https://blog.csdn.net/koflance/article/details/63262484>
+* 支持用js处理结果,以@js:开头,结果变量为result 如 "@JSon:$.link@js:"<http://chapterup.zhuishushenqi.com/chapter/>" + encodeURIComponent(result)"
 * **注意** #替换规则在新语法下无法使用,新的语法用js处理结果,原有的规则不变
 * 去掉了隐藏书源,隐藏书源已经可以用JSonPath语法写出来
 * 新增的语法作为高级功能需要领红包才能开启
@@ -669,7 +675,7 @@
 **2018/11/3**
 * 解决一些BUG
 * 加入自定义TXT目录正则
-* 拷贝https://github.com/Invinciblelee的代码增加EPUB文件支持
+* 拷贝<https://github.com/Invinciblelee的代码增加EPUB文件支持>
 * 优化阅读设置,解决隐藏虚拟操作栏下面显示空白的问题
 
 **2018/11/2**
@@ -683,7 +689,7 @@
 
 **2018/10/31**
 * 解析章节放到后台,进一步提升翻页流畅度
-* 合并 https://github.com/atbest 提交的代码
+* 合并 <https://github.com/atbest> 提交的代码
 * 净化替换规则可选是否为正则表达式
 * 书籍详情界面显示剩余章节数
 * 恢复备份以后不重复显示更新日志
@@ -695,7 +701,7 @@
 * 优化翻页，更流畅
 
 **2018/10/23**
-* 合并 https://github.com/atbest 提交的代码, 修复恢复设置不能恢复阅读背景之类的
+* 合并 <https://github.com/atbest> 提交的代码, 修复恢复设置不能恢复阅读背景之类的
 * 添加记住书架分组,重新打开时自动进入退出时的分组
 * 添加显示所有发现的设置
 * 优化书籍详情,采用自适应布局
@@ -727,19 +733,19 @@
 * 界面改版
 
 **2018/10/15**
-* 合并 https://github.com/atbest 提交的代码
+* 合并 <https://github.com/atbest> 提交的代码
 * 缓存文件添加目录,修改缓存文件名,方便需要合并文件的人
 * 添加禁止更新功能
 
 **2018/10/14**
-* 合并 https://github.com/atbest 提交的代码
+* 合并 <https://github.com/atbest> 提交的代码
 * 添加tip是否跟随边距调整的开关
 * 快速滚动条修改
 * 修复目录加粗可能在部分机型上不起作用的BUG
-* 复制了一些 https://github.com/Invinciblelee 的代码
+* 复制了一些 <https://github.com/Invinciblelee> 的代码
 
 **2018/10/13**
-* 合并 https://github.com/atbest 提交的代码,修复一些BUG,滚动模式背景不随内容滚动
+* 合并 <https://github.com/atbest> 提交的代码,修复一些BUG,滚动模式背景不随内容滚动
 * 稍微修改一下界面
 * 领支付宝红包彩蛋修改为持续3天
 
@@ -749,7 +755,7 @@
 
 **2018/10/08**
 * 修复音量翻页开关
-* 合并 https://github.com/atbest 提交的代码
+* 合并 <https://github.com/atbest> 提交的代码
 
 **2018/10/03**
 * 添加朗读时音量翻页开关
@@ -778,7 +784,7 @@
 **2018/09/25**
 * 换源时智能选择对应的章节
 * 其它一些优化和BUG修复
-* 感谢 https://github.com/atbest 提交的代码
+* 感谢 <https://github.com/atbest> 提交的代码
 
 **2018/09/23**
 * 修复下载时线程过多导致的崩溃

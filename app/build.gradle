@@ -28,7 +28,7 @@ android {
 
     defaultConfig {
         applicationId "com.hx.monkeybook"
-        minSdkVersion 19
+        minSdkVersion 16
         targetSdkVersion 28
         versionCode 10000 + gitCommits
         versionName version
